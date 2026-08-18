@@ -9,6 +9,8 @@ import Cart from './pages/Cart';
 import Checkout from './pages/Checkout';
 import Orders from './pages/Orders';
 import Admin from './pages/Admin';
+import Wishlist from './pages/Wishlist';
+import Partner from './pages/Partner';
 import './App.css';
 
 function ProtectedRoute({ children, adminOnly = false }) {
@@ -77,6 +79,8 @@ function App() {
             <NavLink to="/">Home</NavLink>
             <NavLink to="/products">Products</NavLink>
             <NavLink to="/cart">Cart ({cart.length})</NavLink>
+            <NavLink to="/wishlist">Wishlist</NavLink>
+            <NavLink to="/partner">Sell with us</NavLink>
             <NavLink to="/orders">Orders</NavLink>
             <NavLink to="/admin">Admin</NavLink>
             <NavLink to="/login">Login</NavLink>
@@ -103,6 +107,8 @@ function App() {
               }
             />
             <Route path="/orders" element={<ProtectedRoute><Orders /></ProtectedRoute>} />
+            <Route path="/wishlist" element={<ProtectedRoute><Wishlist addToCart={addToCart} /></ProtectedRoute>} />
+            <Route path="/partner" element={<Partner />} />
             <Route path="/admin" element={<ProtectedRoute adminOnly><Admin /></ProtectedRoute>} />
             <Route path="*" element={<Home addToCart={addToCart} />} />
           </Routes>

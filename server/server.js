@@ -6,6 +6,9 @@ const connectDB = require("./config/db");
 const authRoutes = require("./routes/authRoutes");
 const productRoutes = require("./routes/productRoutes");
 const orderRoutes = require("./routes/orderRoutes");
+const reviewRoutes = require("./routes/reviewRoutes");
+const wishlistRoutes = require("./routes/wishlistRoutes");
+const sellerRoutes = require("./routes/sellerRoutes");
 
 const app = express();
 
@@ -14,6 +17,9 @@ app.use(express.json({ limit: "1mb" }));
 app.use("/api/auth", authRoutes);
 app.use("/api/products", productRoutes);
 app.use("/api/orders", orderRoutes);
+app.use("/api/reviews", reviewRoutes);
+app.use("/api/wishlist", wishlistRoutes);
+app.use("/api/sellers", sellerRoutes);
 
 app.get("/", (req, res) => {
   res.json({

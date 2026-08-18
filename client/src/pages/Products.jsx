@@ -56,9 +56,9 @@ function Products({ addToCart }) {
             <img src={product.image || 'https://via.placeholder.com/300x220'} alt={product.name} />
             <div className="product-card-body">
               <h3>{product.name}</h3>
-              <p>{product.category}</p>
+              <p>{product.brand} · {product.category}</p>
               <div className="product-meta">
-                <span>₹{product.price}</span>
+                <span>₹{product.price} {product.rating > 0 && `· ★ ${product.rating}`}</span>
                 <Link to={`/products/${product._id}`}>View</Link>
               </div>
               <button className="small-btn" onClick={() => addToCart(product, 1)}>
