@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { BrowserRouter, Link, NavLink, Route, Routes } from 'react-router-dom';
+import { BrowserRouter, Link, Navigate, NavLink, Route, Routes, useLocation } from 'react-router-dom';
 import Home from './pages/Home';
 import Products from './pages/Products';
 import ProductDetails from './pages/ProductDetails';
@@ -10,6 +10,22 @@ import Checkout from './pages/Checkout';
 import Orders from './pages/Orders';
 import Admin from './pages/Admin';
 import './App.css';
+
+function ProtectedRoute({ children, adminOnly = false }) {
+  const location = useLocation();
+  const token = localStorage.getItem('token');
+  const user = JSON.parse(localStorage.getItem('user') || 'null');
+
+  if (!token) {
+    return <Navigate to="/login" replace state={{ from: location.pathname }} />;
+  }
+
+  if (adminOnly && user?.role !== 'admin') {
+    return <Navigate to="/" replace />;
+  }
+
+  return children;
+}
 
 function App() {
   const [cart, setCart] = useState([]);
@@ -45,6 +61,8 @@ function App() {
     );
   };
 
+  const clearCart = () => setCart([]);
+
   const totalPrice = useMemo(
     () => cart.reduce((sum, item) => sum + item.price * item.quantity, 0),
     [cart]
@@ -78,10 +96,14 @@ function App() {
             />
             <Route
               path="/checkout"
-              element={<Checkout cart={cart} totalPrice={totalPrice} />}
+              element={
+                <ProtectedRoute>
+                  <Checkout cart={cart} totalPrice={totalPrice} clearCart={clearCart} />
+                </ProtectedRoute>
+              }
             />
-            <Route path="/orders" element={<Orders />} />
-            <Route path="/admin" element={<Admin />} />
+            <Route path="/orders" element={<ProtectedRoute><Orders /></ProtectedRoute>} />
+            <Route path="/admin" element={<ProtectedRoute adminOnly><Admin /></ProtectedRoute>} />
             <Route path="*" element={<Home addToCart={addToCart} />} />
           </Routes>
         </main>

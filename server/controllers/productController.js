@@ -1,4 +1,21 @@
 const Product = require("../models/Product");
+const mongoose = require("mongoose");
+
+const validateProductInput = ({ name, description, price, category, stock }) => {
+  if (!name || !description || !category) {
+    return "Name, description, and category are required";
+  }
+
+  if (!Number.isFinite(Number(price)) || Number(price) < 0) {
+    return "Price must be a non-negative number";
+  }
+
+  if (!Number.isInteger(Number(stock)) || Number(stock) < 0) {
+    return "Stock must be a non-negative integer";
+  }
+
+  return null;
+};
 
 const getProducts = async (req, res) => {
   try {
@@ -19,21 +36,27 @@ const getProductById = async (req, res) => {
 
     res.status(200).json(product);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    const status = error instanceof mongoose.Error.CastError ? 400 : 500;
+    res.status(status).json({ message: status === 400 ? "Invalid product id" : error.message });
   }
 };
 
 const createProduct = async (req, res) => {
   try {
     const { name, description, price, category, image, stock } = req.body;
+    const validationError = validateProductInput(req.body);
+
+    if (validationError) {
+      return res.status(400).json({ message: validationError });
+    }
 
     const product = await Product.create({
       name,
       description,
-      price,
+      price: Number(price),
       category,
       image,
-      stock
+      stock: Number(stock)
     });
 
     res.status(201).json({
@@ -47,6 +70,12 @@ const createProduct = async (req, res) => {
 
 const updateProduct = async (req, res) => {
   try {
+    const validationError = validateProductInput(req.body);
+
+    if (validationError) {
+      return res.status(400).json({ message: validationError });
+    }
+
     const product = await Product.findById(req.params.id);
 
     if (!product) {
@@ -55,7 +84,7 @@ const updateProduct = async (req, res) => {
 
     const updatedProduct = await Product.findByIdAndUpdate(
       req.params.id,
-      req.body,
+      { ...req.body, price: Number(req.body.price), stock: Number(req.body.stock) },
       { new: true }
     );
 
@@ -64,7 +93,8 @@ const updateProduct = async (req, res) => {
       product: updatedProduct
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    const status = error instanceof mongoose.Error.CastError ? 400 : 500;
+    res.status(status).json({ message: status === 400 ? "Invalid product id" : error.message });
   }
 };
 
@@ -83,7 +113,8 @@ const deleteProduct = async (req, res) => {
       productId: req.params.id
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    const status = error instanceof mongoose.Error.CastError ? 400 : 500;
+    res.status(status).json({ message: status === 400 ? "Invalid product id" : error.message });
   }
 };
 

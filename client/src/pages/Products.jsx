@@ -4,6 +4,9 @@ import api from '../api';
 
 function Products({ addToCart }) {
   const [products, setProducts] = useState([]);
+  const [search, setSearch] = useState('');
+  const [category, setCategory] = useState('all');
+  const [sort, setSort] = useState('featured');
 
   useEffect(() => {
     api.get('/products')
@@ -11,14 +14,44 @@ function Products({ addToCart }) {
       .catch(() => setProducts([]));
   }, []);
 
+  const categories = [...new Set(products.map((product) => product.category).filter(Boolean))];
+  const visibleProducts = products
+    .filter((product) => {
+      const matchesSearch = product.name.toLowerCase().includes(search.toLowerCase());
+      const matchesCategory = category === 'all' || product.category === category;
+      return matchesSearch && matchesCategory;
+    })
+    .sort((first, second) => {
+      if (sort === 'price-low') return first.price - second.price;
+      if (sort === 'price-high') return second.price - first.price;
+      return 0;
+    });
+
   return (
     <section className="page-block">
       <div className="section-heading">
         <h2>Products</h2>
+        <div className="catalog-controls">
+          <input
+            type="search"
+            placeholder="Search products"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+          />
+          <select value={category} onChange={(event) => setCategory(event.target.value)}>
+            <option value="all">All categories</option>
+            {categories.map((item) => <option key={item} value={item}>{item}</option>)}
+          </select>
+          <select value={sort} onChange={(event) => setSort(event.target.value)}>
+            <option value="featured">Featured</option>
+            <option value="price-low">Price: low to high</option>
+            <option value="price-high">Price: high to low</option>
+          </select>
+        </div>
       </div>
 
       <div className="product-grid">
-        {products.map((product) => (
+        {visibleProducts.map((product) => (
           <div className="product-card" key={product._id || product.id}>
             <img src={product.image || 'https://via.placeholder.com/300x220'} alt={product.name} />
             <div className="product-card-body">
@@ -35,6 +68,7 @@ function Products({ addToCart }) {
           </div>
         ))}
       </div>
+      {!visibleProducts.length && <p className="empty-state">No products match your search.</p>}
     </section>
   );
 }

@@ -1,5 +1,19 @@
 const mongoose = require("mongoose");
 
+const orderItemSchema = new mongoose.Schema(
+  {
+    product: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Product",
+      required: true
+    },
+    name: { type: String, required: true },
+    price: { type: Number, required: true, min: 0 },
+    quantity: { type: Number, required: true, min: 1 }
+  },
+  { _id: false }
+);
+
 const orderSchema = new mongoose.Schema(
   {
     user: {
@@ -7,35 +21,26 @@ const orderSchema = new mongoose.Schema(
       ref: "User",
       required: true
     },
-
-    products: [
-      {
-        product: {
-          type: mongoose.Schema.Types.ObjectId,
-          ref: "Product"
-        },
-
-        quantity: {
-          type: Number,
-          required: true
-        }
-      }
-    ],
-
-    totalAmount: {
-      type: Number,
-      required: true
+    items: {
+      type: [orderItemSchema],
+      required: true,
+      validate: (items) => items.length > 0
     },
-
+    shippingAddress: {
+      name: { type: String, required: true },
+      street: { type: String, required: true },
+      city: { type: String, required: true },
+      postalCode: { type: String, required: true },
+      country: { type: String, required: true }
+    },
+    total: { type: Number, required: true, min: 0 },
     status: {
       type: String,
-      enum: ["Pending", "Processing", "Shipped", "Delivered"],
-      default: "Pending"
+      enum: ["pending", "confirmed", "shipped", "delivered", "cancelled"],
+      default: "pending"
     }
   },
-  {
-    timestamps: true
-  }
+  { timestamps: true }
 );
 
 module.exports = mongoose.model("Order", orderSchema);
