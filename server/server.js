@@ -9,10 +9,23 @@ const orderRoutes = require("./routes/orderRoutes");
 const reviewRoutes = require("./routes/reviewRoutes");
 const wishlistRoutes = require("./routes/wishlistRoutes");
 const sellerRoutes = require("./routes/sellerRoutes");
+const paymentRoutes = require("./routes/paymentRoutes");
+const { handleStripeWebhook } = require("./controllers/paymentController");
 
 const app = express();
 
-app.use(cors());
+const allowedOrigins = [
+  process.env.CLIENT_URL || "http://localhost:5173",
+  "http://localhost:5173"
+];
+
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
+    return callback(new Error("Origin not allowed by CORS"));
+  }
+}));
+app.post("/api/payments/webhook", express.raw({ type: "application/json" }), handleStripeWebhook);
 app.use(express.json({ limit: "1mb" }));
 app.use("/api/auth", authRoutes);
 app.use("/api/products", productRoutes);
@@ -20,11 +33,16 @@ app.use("/api/orders", orderRoutes);
 app.use("/api/reviews", reviewRoutes);
 app.use("/api/wishlist", wishlistRoutes);
 app.use("/api/sellers", sellerRoutes);
+app.use("/api/payments", paymentRoutes);
 
 app.get("/", (req, res) => {
   res.json({
     message: "E-Commerce API is running"
   });
+});
+
+app.get("/api/health", (req, res) => {
+  res.status(200).json({ status: "ok", service: "ecommerce-api", timestamp: new Date().toISOString() });
 });
 
 app.use((req, res) => {

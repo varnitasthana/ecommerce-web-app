@@ -36,8 +36,23 @@ const orderSchema = new mongoose.Schema(
     total: { type: Number, required: true, min: 0 },
     status: {
       type: String,
-      enum: ["pending", "confirmed", "shipped", "delivered", "cancelled"],
+      enum: ["pending_payment", "pending", "confirmed", "shipped", "delivered", "cancelled"],
+      default: "pending_payment"
+    },
+    paymentStatus: {
+      type: String,
+      enum: ["pending", "paid", "failed", "refunded"],
       default: "pending"
+    },
+    stripeCheckoutSessionId: {
+      type: String,
+      index: true
+    },
+    stripePaymentIntentId: String,
+    paidAt: Date,
+    stockReserved: {
+      type: Boolean,
+      default: true
     }
   },
   { timestamps: true }

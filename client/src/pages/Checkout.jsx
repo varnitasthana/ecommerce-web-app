@@ -2,10 +2,12 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import api from '../api';
 
-function Checkout({ cart, totalPrice, clearCart }) {
+function Checkout({ cart, totalPrice }) {
   const navigate = useNavigate();
   const [message, setMessage] = useState('');
+  const [processing, setProcessing] = useState(false);
   const [address, setAddress] = useState({ name: '', street: '', city: '', postalCode: '', country: '' });
+  const paymentCancelled = new URLSearchParams(window.location.search).get('payment') === 'cancelled';
 
   const handleChange = (event) => {
     setAddress({ ...address, [event.target.name]: event.target.value });
@@ -20,20 +22,22 @@ function Checkout({ cart, totalPrice, clearCart }) {
     }
 
     try {
-      await api.post('/orders', {
+      setProcessing(true);
+      const response = await api.post('/payments/create-checkout-session', {
         items: cart.map((item) => ({ product: item._id || item.id, quantity: item.quantity })),
         shippingAddress: address
       });
-      clearCart();
-      navigate('/orders');
+      window.location.assign(response.data.checkoutUrl);
     } catch (error) {
       setMessage(error.response?.data?.message || 'Could not place order');
+      setProcessing(false);
     }
   };
 
   return (
     <section className="page-block">
       <h2>Checkout</h2>
+      {paymentCancelled && <p className="form-message">Payment was cancelled. Your cart is still here.</p>}
       <div className="checkout-box">
         <div>
           {cart.length === 0 ? (
@@ -59,7 +63,7 @@ function Checkout({ cart, totalPrice, clearCart }) {
           <input name="postalCode" placeholder="Postal code" value={address.postalCode} onChange={handleChange} required />
           <input name="country" placeholder="Country" value={address.country} onChange={handleChange} required />
           <button type="submit" className="primary-btn">
-          Place order
+          {processing ? 'Opening secure payment...' : 'Pay securely'}
           </button>
         </form>
         {message && <p className="form-message">{message}</p>}

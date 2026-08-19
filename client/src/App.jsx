@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react';
-import { BrowserRouter, Link, Navigate, NavLink, Route, Routes, useLocation } from 'react-router-dom';
+import { useEffect, useMemo, useState } from 'react';
+import { BrowserRouter, Link, Navigate, NavLink, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import Home from './pages/Home';
 import Products from './pages/Products';
 import ProductDetails from './pages/ProductDetails';
@@ -29,8 +29,54 @@ function ProtectedRoute({ children, adminOnly = false }) {
   return children;
 }
 
+function Header({ cart }) {
+  const navigate = useNavigate();
+  const user = JSON.parse(localStorage.getItem('user') || 'null');
+  const [search, setSearch] = useState('');
+
+  const submitSearch = (event) => {
+    event.preventDefault();
+    navigate(`/products${search.trim() ? `?search=${encodeURIComponent(search.trim())}` : ''}`);
+  };
+
+  return (
+    <>
+      <div className="announcement">Free delivery on orders over ₹999 · Trusted brands · Easy returns</div>
+      <header className="topbar">
+        <Link className="brand" to="/">
+          <span className="brand-mark">S</span>
+          ShopEase
+        </Link>
+        <form className="global-search" onSubmit={submitSearch}>
+          <input aria-label="Search products" placeholder="Search products, brands and categories" value={search} onChange={(event) => setSearch(event.target.value)} />
+          <button type="submit" aria-label="Search">Search</button>
+        </form>
+        <nav className="nav">
+          <NavLink to="/products">Shop</NavLink>
+          <NavLink to="/wishlist">Wishlist</NavLink>
+          <NavLink to="/orders">Orders</NavLink>
+          <NavLink to="/cart">Cart <span className="nav-count">{cart.length}</span></NavLink>
+          {user?.role === 'admin' && <NavLink to="/admin">Admin</NavLink>}
+          <NavLink to={user ? '/orders' : '/login'}>{user ? user.name : 'Sign in'}</NavLink>
+        </nav>
+      </header>
+      <div className="category-bar">
+        <NavLink to="/products">All products</NavLink>
+        <NavLink to="/products?category=Electronics">Electronics</NavLink>
+        <NavLink to="/products?category=Home">Home & living</NavLink>
+        <NavLink to="/products?category=Fashion">Fashion</NavLink>
+        <NavLink to="/partner">Sell with us</NavLink>
+      </div>
+    </>
+  );
+}
+
 function App() {
-  const [cart, setCart] = useState([]);
+  const [cart, setCart] = useState(() => JSON.parse(localStorage.getItem('cart') || '[]'));
+
+  useEffect(() => {
+    localStorage.setItem('cart', JSON.stringify(cart));
+  }, [cart]);
 
   const addToCart = (product, quantity = 1) => {
     setCart((prev) => {
@@ -73,19 +119,7 @@ function App() {
   return (
     <BrowserRouter>
       <div className="app-shell">
-        <header className="topbar">
-          <div className="brand">ShopEase</div>
-          <nav className="nav">
-            <NavLink to="/">Home</NavLink>
-            <NavLink to="/products">Products</NavLink>
-            <NavLink to="/cart">Cart ({cart.length})</NavLink>
-            <NavLink to="/wishlist">Wishlist</NavLink>
-            <NavLink to="/partner">Sell with us</NavLink>
-            <NavLink to="/orders">Orders</NavLink>
-            <NavLink to="/admin">Admin</NavLink>
-            <NavLink to="/login">Login</NavLink>
-          </nav>
-        </header>
+        <Header cart={cart} />
 
         <main>
           <Routes>
@@ -102,11 +136,11 @@ function App() {
               path="/checkout"
               element={
                 <ProtectedRoute>
-                  <Checkout cart={cart} totalPrice={totalPrice} clearCart={clearCart} />
+                  <Checkout cart={cart} totalPrice={totalPrice} />
                 </ProtectedRoute>
               }
             />
-            <Route path="/orders" element={<ProtectedRoute><Orders /></ProtectedRoute>} />
+            <Route path="/orders" element={<ProtectedRoute><Orders clearCart={clearCart} /></ProtectedRoute>} />
             <Route path="/wishlist" element={<ProtectedRoute><Wishlist addToCart={addToCart} /></ProtectedRoute>} />
             <Route path="/partner" element={<Partner />} />
             <Route path="/admin" element={<ProtectedRoute adminOnly><Admin /></ProtectedRoute>} />

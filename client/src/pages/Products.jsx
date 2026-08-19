@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import api from '../api';
 
 function Products({ addToCart }) {
@@ -7,6 +7,12 @@ function Products({ addToCart }) {
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('all');
   const [sort, setSort] = useState('featured');
+  const [searchParams] = useSearchParams();
+
+  useEffect(() => {
+    setSearch(searchParams.get('search') || '');
+    setCategory(searchParams.get('category') || 'all');
+  }, [searchParams]);
 
   useEffect(() => {
     api.get('/products')
