@@ -15,6 +15,7 @@ const paymentRoutes = require("./routes/paymentRoutes");
 const { handleStripeWebhook } = require("./controllers/paymentController");
 const mediaRoutes = require("./routes/mediaRoutes");
 const { integrationStatus } = require("./config/integrations");
+const { notFound, errorHandler } = require("./middleware/errorHandler");
 
 const app = express();
 
@@ -52,18 +53,8 @@ app.get("/api/health", (req, res) => {
   res.status(200).json({ status: "ok", service: "ecommerce-api", integrations: integrationStatus(), timestamp: new Date().toISOString() });
 });
 
-app.use((req, res) => {
-  res.status(404).json({ message: "Route not found" });
-});
-
-app.use((error, req, res, next) => {
-  if (error.type === "entity.parse.failed") {
-    return res.status(400).json({ message: "Invalid JSON body" });
-  }
-
-  console.error(error);
-  return res.status(500).json({ message: "Internal server error" });
-});
+app.use(notFound);
+app.use(errorHandler);
 
 const PORT = process.env.PORT || 5000;
 let server;

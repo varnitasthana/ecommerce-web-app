@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import api from '../api';
+import api from '../services/api';
 
 function Wishlist({ addToCart }) {
   const [products, setProducts] = useState([]);

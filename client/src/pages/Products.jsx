@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import api from '../api';
+import api from '../services/api';
 
 function Products({ addToCart }) {
   const [products, setProducts] = useState([]);
