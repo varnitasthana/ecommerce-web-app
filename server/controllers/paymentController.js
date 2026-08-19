@@ -2,6 +2,7 @@ const Stripe = require("stripe");
 const Order = require("../models/Order");
 const Product = require("../models/Product");
 const User = require("../models/User");
+const { sendOrderConfirmation } = require("../services/emailService");
 
 const getStripe = () => {
   if (!process.env.STRIPE_SECRET_KEY) {
@@ -130,6 +131,7 @@ const handleStripeWebhook = async (req, res) => {
 
   const order = await Order.findById(orderId);
   if (!order) return res.json({ received: true });
+  const user = await User.findById(order.user).select("email");
 
   if (["checkout.session.completed", "checkout.session.async_payment_succeeded"].includes(event.type) && session.payment_status === "paid" && order.paymentStatus === "pending") {
     order.paymentStatus = "paid";
@@ -138,6 +140,9 @@ const handleStripeWebhook = async (req, res) => {
     order.stripePaymentIntentId = session.payment_intent;
     order.stockReserved = false;
     await order.save();
+    if (user?.email) {
+      sendOrderConfirmation({ email: user.email, order }).catch((error) => console.error("Order email failed:", error.message));
+    }
   }
 
   if (["checkout.session.expired", "checkout.session.async_payment_failed"].includes(event.type) && order.paymentStatus === "pending") {

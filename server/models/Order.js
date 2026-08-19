@@ -53,7 +53,10 @@ const orderSchema = new mongoose.Schema(
     stockReserved: {
       type: Boolean,
       default: true
-    }
+    },
+    shippingProvider: String,
+    trackingNumber: String,
+    trackingUrl: String
   },
   { timestamps: true }
 );

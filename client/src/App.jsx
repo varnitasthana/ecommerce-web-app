@@ -11,6 +11,8 @@ import Orders from './pages/Orders';
 import Admin from './pages/Admin';
 import Wishlist from './pages/Wishlist';
 import Partner from './pages/Partner';
+import Legal from './pages/Legal';
+import Support from './pages/Support';
 import './App.css';
 
 function ProtectedRoute({ children, adminOnly = false }) {
@@ -143,13 +145,23 @@ function App() {
             <Route path="/orders" element={<ProtectedRoute><Orders clearCart={clearCart} /></ProtectedRoute>} />
             <Route path="/wishlist" element={<ProtectedRoute><Wishlist addToCart={addToCart} /></ProtectedRoute>} />
             <Route path="/partner" element={<Partner />} />
+            <Route path="/support" element={<Support />} />
+            <Route path="/privacy" element={<Legal type="privacy" />} />
+            <Route path="/terms" element={<Legal type="terms" />} />
+            <Route path="/returns" element={<Legal type="returns" />} />
             <Route path="/admin" element={<ProtectedRoute adminOnly><Admin /></ProtectedRoute>} />
             <Route path="*" element={<Home addToCart={addToCart} />} />
           </Routes>
         </main>
 
         <footer className="footer">
-          <Link to="/checkout">Proceed to checkout</Link>
+          <div className="footer-grid">
+            <div><Link className="footer-brand" to="/">ShopEase</Link><p>Everyday essentials, thoughtfully delivered.</p></div>
+            <div><strong>Shop</strong><Link to="/products">All products</Link><Link to="/wishlist">Wishlist</Link><Link to="/partner">Sell with us</Link></div>
+            <div><strong>Help</strong><Link to="/support">Customer support</Link><Link to="/returns">Returns and refunds</Link><Link to="/orders">Track an order</Link></div>
+            <div><strong>Policies</strong><Link to="/privacy">Privacy</Link><Link to="/terms">Terms</Link><Link to="/checkout">Secure checkout</Link></div>
+          </div>
+          <div className="footer-bottom"><span>© 2026 ShopEase Marketplace</span><span>Secure payments · Verified partners · Easy returns</span></div>
         </footer>
       </div>
     </BrowserRouter>

@@ -1,5 +1,6 @@
 const Order = require("../models/Order");
 const Product = require("../models/Product");
+const { getTracking } = require("../services/shippingService");
 
 const createOrder = async (req, res) => {
   try {
@@ -62,4 +63,16 @@ const getMyOrders = async (req, res) => {
   }
 };
 
-module.exports = { createOrder, getMyOrders };
+const getOrderTracking = async (req, res) => {
+  try {
+    const order = await Order.findOne({ _id: req.params.id, user: req.user.id });
+    if (!order) return res.status(404).json({ message: "Order not found" });
+    if (!order.trackingNumber) return res.status(409).json({ message: "Tracking is not available yet" });
+    const tracking = await getTracking(order.trackingNumber);
+    res.status(200).json(tracking);
+  } catch (error) {
+    res.status(error.statusCode || 502).json({ message: error.message });
+  }
+};
+
+module.exports = { createOrder, getMyOrders, getOrderTracking };
