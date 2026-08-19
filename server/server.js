@@ -15,7 +15,9 @@ const paymentRoutes = require("./routes/paymentRoutes");
 const { handleStripeWebhook } = require("./controllers/paymentController");
 const mediaRoutes = require("./routes/mediaRoutes");
 const { integrationStatus } = require("./config/integrations");
+const { validateEnvironment } = require("./config/env");
 const { notFound, errorHandler } = require("./middleware/errorHandler");
+const userRoutes = require("./routes/userRoutes");
 
 const app = express();
 
@@ -42,6 +44,7 @@ app.use("/api/wishlist", wishlistRoutes);
 app.use("/api/sellers", sellerRoutes);
 app.use("/api/payments", paymentRoutes);
 app.use("/api/media", mediaRoutes);
+app.use("/api/users", userRoutes);
 
 app.get("/", (req, res) => {
   res.json({
@@ -60,6 +63,7 @@ const PORT = process.env.PORT || 5000;
 let server;
 
 const startServer = async () => {
+  validateEnvironment();
   await connectDB();
 
   server = app.listen(PORT, () => {

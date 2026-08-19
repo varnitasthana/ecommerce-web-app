@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import api from '../services/api';
+import { useAuth } from '../context/useAuth';
 
 function Login() {
   const navigate = useNavigate();
+  const { login } = useAuth();
   const [form, setForm] = useState({ email: '', password: '' });
   const [message, setMessage] = useState('');
 
@@ -17,8 +19,7 @@ function Login() {
     try {
       const { data } = await api.post('/auth/login', form);
 
-      localStorage.setItem('token', data.token);
-      localStorage.setItem('user', JSON.stringify(data.user));
+      login(data);
       setMessage('Login successful');
       navigate('/');
     } catch (error) {

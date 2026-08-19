@@ -13,18 +13,21 @@ import Wishlist from './pages/Wishlist';
 import Partner from './pages/Partner';
 import Legal from './pages/Legal';
 import Support from './pages/Support';
+import SellerDashboard from './pages/SellerDashboard';
+import { AuthProvider } from './context/AuthContext';
+import { useAuth } from './context/useAuth';
 import './App.css';
 
-function ProtectedRoute({ children, adminOnly = false }) {
+function ProtectedRoute({ children, adminOnly = false, roles = [] }) {
   const location = useLocation();
-  const token = localStorage.getItem('token');
-  const user = JSON.parse(localStorage.getItem('user') || 'null');
+  const { user, loading } = useAuth();
 
-  if (!token) {
+  if (loading) return <div className="page-block">Checking your session...</div>;
+  if (!user) {
     return <Navigate to="/login" replace state={{ from: location.pathname }} />;
   }
 
-  if (adminOnly && user?.role !== 'admin') {
+  if ((adminOnly && user?.role !== 'admin') || (roles.length > 0 && !roles.includes(user?.role))) {
     return <Navigate to="/" replace />;
   }
 
@@ -33,7 +36,7 @@ function ProtectedRoute({ children, adminOnly = false }) {
 
 function Header({ cart }) {
   const navigate = useNavigate();
-  const user = JSON.parse(localStorage.getItem('user') || 'null');
+  const { user, logout } = useAuth();
   const [search, setSearch] = useState('');
 
   const submitSearch = (event) => {
@@ -59,7 +62,8 @@ function Header({ cart }) {
           <NavLink to="/orders">Orders</NavLink>
           <NavLink to="/cart">Cart <span className="nav-count">{cart.length}</span></NavLink>
           {user?.role === 'admin' && <NavLink to="/admin">Admin</NavLink>}
-          <NavLink to={user ? '/orders' : '/login'}>{user ? user.name : 'Sign in'}</NavLink>
+          {(user?.role === 'seller' || user?.role === 'admin') && <NavLink to="/seller">Seller</NavLink>}
+          {user ? <button className="nav-button" onClick={() => { logout(); navigate('/'); }}>Sign out</button> : <NavLink to="/login">Sign in</NavLink>}
         </nav>
       </header>
       <div className="category-bar">
@@ -120,6 +124,7 @@ function App() {
 
   return (
     <BrowserRouter>
+      <AuthProvider>
       <div className="app-shell">
         <Header cart={cart} />
 
@@ -145,6 +150,7 @@ function App() {
             <Route path="/orders" element={<ProtectedRoute><Orders clearCart={clearCart} /></ProtectedRoute>} />
             <Route path="/wishlist" element={<ProtectedRoute><Wishlist addToCart={addToCart} /></ProtectedRoute>} />
             <Route path="/partner" element={<Partner />} />
+            <Route path="/seller" element={<ProtectedRoute roles={['seller', 'admin']}><SellerDashboard /></ProtectedRoute>} />
             <Route path="/support" element={<Support />} />
             <Route path="/privacy" element={<Legal type="privacy" />} />
             <Route path="/terms" element={<Legal type="terms" />} />
@@ -164,6 +170,7 @@ function App() {
           <div className="footer-bottom"><span>© 2026 ShopEase Marketplace</span><span>Secure payments · Verified partners · Easy returns</span></div>
         </footer>
       </div>
+      </AuthProvider>
     </BrowserRouter>
   );
 }

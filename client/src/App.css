@@ -25,6 +25,7 @@ a { color: inherit; }
 .nav { display: flex; gap: 0.2rem; flex-wrap: wrap; align-items: center; justify-content: flex-end; margin-left: auto; }
 .nav a { padding: 0.55rem 0.65rem; border-radius: 6px; color: white; font-size: 0.88rem; text-decoration: none; opacity: 0.8; }
 .nav a.active { color: #f4b942; background: rgba(255,255,255,0.08); opacity: 1; }
+.nav-button { border: 0; padding: 0.55rem 0.65rem; border-radius: 6px; background: transparent; color: white; font-size: 0.88rem; opacity: 0.8; }
 .nav-count { display: inline-grid; min-width: 1.35rem; height: 1.35rem; place-items: center; padding: 0 0.25rem; border-radius: 999px; background: #f4b942; color: #082032; font-size: 0.72rem; font-weight: 700; }
 .category-bar { display: flex; gap: 1.4rem; padding: 0.72rem max(1rem, calc((100vw - 1280px) / 2)); border-bottom: 1px solid #dce3e8; background: white; overflow-x: auto; white-space: nowrap; }
 .category-bar a { color: #506174; font-size: 0.86rem; text-decoration: none; }

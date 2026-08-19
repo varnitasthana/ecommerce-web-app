@@ -1,5 +1,10 @@
 const SellerApplication = require("../models/SellerApplication");
 
+const getMyApplications = async (req, res) => {
+  const applications = await SellerApplication.find({ applicant: req.user.id }).sort({ createdAt: -1 });
+  res.status(200).json(applications);
+};
+
 const createApplication = async (req, res) => {
   try {
     const { brandName, contactEmail, category, website, message } = req.body;
@@ -36,4 +41,4 @@ const updateApplicationStatus = async (req, res) => {
   res.status(200).json({ message: "Application updated", application });
 };
 
-module.exports = { createApplication, getApplications, updateApplicationStatus };
+module.exports = { createApplication, getApplications, updateApplicationStatus, getMyApplications };

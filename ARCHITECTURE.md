@@ -190,3 +190,31 @@ Completed in this phase:
 - Documented request flow, ownership boundaries, integrations, configuration, and future architecture.
 
 This phase does not add a new product feature. The next phase should be reviewed and approved before implementation.
+
+## Authentication Architecture
+
+Phase 2 keeps JWT authentication but centralizes its responsibilities:
+
+- `validators/authValidator.js` validates and normalizes registration/login input.
+- `models/User.js` defaults new accounts to `customer`, excludes password hashes from normal queries, and temporarily accepts legacy `user` records for compatibility.
+- `controllers/authController.js` handles registration/login and returns safe user data only.
+- `controllers/userController.js` provides `/api/auth/me` and admin-only role changes.
+- `middleware/authMiddleware.js` provides `authenticateUser`, `authorizeRoles`, `protect`, `adminOnly`, and `sellerOnly`.
+- `context/AuthContext.jsx` owns frontend session restoration, login, loading state, and logout.
+- `context/useAuth.js` exposes the hook without mixing Fast Refresh component and hook exports.
+
+### Role model
+
+- `customer`: shopping, cart, wishlist, reviews, checkout, and personal orders.
+- `seller`: seller workspace and seller-owned resources after promotion.
+- `admin`: product management, seller management, and user role management.
+
+The backend is authoritative. Frontend route guards and hidden navigation are usability features only.
+
+### Protected route strategy
+
+Axios attaches the JWT to requests. The backend verifies the token, loads the current user from MongoDB, and applies role middleware. Missing/invalid credentials return `401`; authenticated users without permission return `403`.
+
+### Security considerations
+
+Passwords are bcrypt-hashed and excluded by default from Mongoose results. Emails are normalized, login failures are generic, authentication endpoints are rate-limited, JWT configuration is validated at startup, and role changes are restricted to admins. Logout clears the current browser session; server-side token revocation remains a future session-management milestone.
