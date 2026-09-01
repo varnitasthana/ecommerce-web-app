@@ -1,0 +1,30 @@
+{
+  "name": "ecommerce-server",
+  "version": "1.0.0",
+  "scripts": {
+    "test": "jest --detectOpenHandles --forceExit",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "collectCoverageFrom": [
+      "controllers/**/*.js",
+      "models/**/*.js",
+      "validators/**/*.js",
+      "middleware/**/*.js",
+      "services/**/*.js"
+    ],
+    "coverageThreshold": {
+      "global": {
+        "branches": 50,
+        "functions": 50,
+        "lines": 50,
+        "statements": 50
+      }
+    },
+    "testMatch": [
+      "**/__tests__/**/*.test.js"
+    ]
+  }
+}

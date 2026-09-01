@@ -8,7 +8,7 @@ function Home({ addToCart }) {
 
   useEffect(() => {
     api.get('/products')
-      .then((response) => setProducts(Array.isArray(response.data) ? response.data : []))
+      .then((response) => setProducts(Array.isArray(response.data) ? response.data : response.data.products || []))
       .catch(() => setProducts([]))
       .finally(() => setLoading(false));
   }, []);

@@ -6,7 +6,9 @@ require("dotenv").config();
 
 const connectDB = require("./config/db");
 const authRoutes = require("./routes/authRoutes");
+const accountRoutes = require("./routes/accountRoutes");
 const productRoutes = require("./routes/productRoutes");
+const searchRoutes = require("./routes/searchRoutes");
 const orderRoutes = require("./routes/orderRoutes");
 const reviewRoutes = require("./routes/reviewRoutes");
 const wishlistRoutes = require("./routes/wishlistRoutes");
@@ -37,7 +39,9 @@ app.use(rateLimit({ windowMs: 15 * 60 * 1000, max: 300, standardHeaders: true, l
 app.post("/api/payments/webhook", express.raw({ type: "application/json" }), handleStripeWebhook);
 app.use(express.json({ limit: "1mb" }));
 app.use("/api/auth", authRoutes);
+app.use("/api/account", accountRoutes);
 app.use("/api/products", productRoutes);
+app.use("/api/search", searchRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/reviews", reviewRoutes);
 app.use("/api/wishlist", wishlistRoutes);
