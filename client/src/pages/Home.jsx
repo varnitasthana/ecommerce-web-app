@@ -15,6 +15,7 @@ function Home({ addToCart }) {
 
   const featuredProducts = products.slice(0, 4);
 
+  
   return (
     <section className="home-page">
       <div className="hero-banner">
