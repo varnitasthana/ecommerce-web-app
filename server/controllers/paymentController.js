@@ -74,7 +74,7 @@ const reserveStockWithinTransaction = async (session, validatedItems) => {
       const product = await Product.findOneAndUpdate(
         { _id: item.productId, stock: { $gte: item.quantity }, active: true, deleted: false },
         { $inc: { stock: -item.quantity } },
-        { new: true, session }
+        { returnDocument: "after", session }
       );
       
       if (!product) {

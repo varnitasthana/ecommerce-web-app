@@ -224,7 +224,7 @@ const seedProducts = async (users) => {
       const product = await Product.findOneAndUpdate(
         { sku: payload.sku },
         { $set: payload },
-        { upsert: true, new: true, runValidators: true, setDefaultsOnInsert: true }
+        { upsert: true, returnDocument: "after", runValidators: true, setDefaultsOnInsert: true }
       );
       if (existing) report.products.updated += 1;
       else report.products.created += 1;
@@ -257,7 +257,7 @@ const seedReviews = async (products, users) => {
             comment: `Development review ${reviewIndex + 1} for validating ratings and customer review flows.`
           }
         },
-        { upsert: true, new: true, runValidators: true, setDefaultsOnInsert: true }
+        { upsert: true, returnDocument: "after", runValidators: true, setDefaultsOnInsert: true }
       );
       if (existing) report.reviews.updated += 1;
       else report.reviews.created += 1;

@@ -33,7 +33,7 @@ const updateProfile = async (req, res) => {
     if (req.body.gender !== undefined) updates.gender = req.body.gender || null;
     if (req.body.dateOfBirth !== undefined) updates.dateOfBirth = req.body.dateOfBirth || null;
 
-    const user = await User.findByIdAndUpdate(req.user.id, updates, { new: true });
+    const user = await User.findByIdAndUpdate(req.user.id, updates, { returnDocument: "after" });
 
     if (!user) {
       return res.status(404).json({ message: "User not found" });

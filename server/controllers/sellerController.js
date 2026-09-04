@@ -35,7 +35,7 @@ const updateApplicationStatus = async (req, res) => {
   const application = await SellerApplication.findByIdAndUpdate(
     req.params.id,
     { status: req.body.status },
-    { new: true, runValidators: true }
+    { returnDocument: "after", runValidators: true }
   );
   if (!application) return res.status(404).json({ message: "Application not found" });
   res.status(200).json({ message: "Application updated", application });

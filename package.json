@@ -5,7 +5,11 @@
     "dev": "concurrently --kill-others-on-fail \"npm --prefix server run dev\" \"npm --prefix client run dev -- --host 0.0.0.0\"",
     "dev:clean": "powershell -ExecutionPolicy Bypass -File scripts/dev-clean.ps1",
     "server": "npm --prefix server run dev",
-    "client": "npm --prefix client run dev -- --host 0.0.0.0"
+    "client": "npm --prefix client run dev -- --host 0.0.0.0",
+    "test": "npm --prefix server test",
+    "test:coverage": "npm --prefix server run test:coverage",
+    "lint": "npm --prefix client run lint",
+    "build": "npm --prefix client run build"
   },
   "devDependencies": {
     "concurrently": "^9.1.0"

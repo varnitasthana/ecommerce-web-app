@@ -86,10 +86,12 @@ const startServer = async () => {
   });
 };
 
-startServer().catch((error) => {
-  console.error("Server startup failed:", error.message);
-  process.exit(1);
-});
+if (require.main === module) {
+  startServer().catch((error) => {
+    console.error("Server startup failed:", error.message);
+    process.exit(1);
+  });
+}
 
 const shutdown = () => {
   if (!server) {
@@ -101,3 +103,5 @@ const shutdown = () => {
 
 process.on("SIGINT", shutdown);
 process.on("SIGTERM", shutdown);
+
+module.exports = { app, startServer };

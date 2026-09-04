@@ -24,7 +24,7 @@ const updateUserRole = async (req, res) => {
   const user = await User.findByIdAndUpdate(
     req.params.id,
     { role: req.body.role },
-    { new: true, runValidators: true }
+    { returnDocument: "after", runValidators: true }
   ).select("name email role");
   if (!user) return res.status(404).json({ message: "User not found" });
   res.status(200).json({ message: "User role updated", user: safeUser(user) });

@@ -13,7 +13,7 @@ const toggleWishlist = async (req, res) => {
   const wishlist = await Wishlist.findOneAndUpdate(
     { user: req.user.id },
     { $setOnInsert: { user: req.user.id } },
-    { new: true, upsert: true }
+    { returnDocument: "after", upsert: true }
   );
   const productId = product._id.toString();
   const exists = wishlist.products.some((item) => item.toString() === productId);

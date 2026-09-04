@@ -96,7 +96,7 @@ const updateProduct = async (req, res) => {
     if (validationError) return res.status(400).json({ message: validationError });
     const updates = { ...req.body, price: Number(req.body.price), stock: Number(req.body.stock), compareAtPrice: Number(req.body.compareAtPrice || 0) };
     if (req.body.slug || req.body.name) updates.slug = slugify(req.body.slug || req.body.name);
-    const product = await Product.findByIdAndUpdate(req.params.id, updates, { new: true, runValidators: true });
+    const product = await Product.findByIdAndUpdate(req.params.id, updates, { returnDocument: "after", runValidators: true });
     if (!product) return res.status(404).json({ message: "Product not found" });
     res.status(200).json({ message: "Product updated successfully", product: publicProduct(product) });
   } catch (error) {
@@ -111,7 +111,7 @@ const deleteProduct = async (req, res) => {
     const product = await Product.findByIdAndUpdate(
       req.params.id, 
       { deleted: true, deletedAt: new Date(), active: false }, 
-      { new: true }
+      { returnDocument: "after" }
     );
     if (!product) return res.status(404).json({ message: "Product not found" });
     res.status(200).json({ message: "Product deleted successfully", productId: req.params.id });

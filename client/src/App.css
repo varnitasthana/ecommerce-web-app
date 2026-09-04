@@ -45,6 +45,8 @@ img {
 
 button, input, textarea, select {
   font: inherit;
+  color: var(--text-primary);
+  color-scheme: light;
 }
 
 button {

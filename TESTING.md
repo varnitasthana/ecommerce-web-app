@@ -4,17 +4,30 @@ This document describes the testing strategy for ShopEase e-commerce platform.
 
 ## Test Setup
 
-### Dependencies
-```bash
-npm install --save-dev jest supertest mongodb-memory-server
-```
+### Test Architecture
+
+Backend API tests live in `server/__tests__/api.test.js` and use Jest,
+Supertest, and MongoDB Memory Server. The suite creates and destroys an
+isolated in-memory database and never connects to the development seed data.
+
+There is currently no frontend unit-test runner or Playwright project. Browser
+smoke checks are performed separately against the running local app and are not
+counted as automated E2E tests.
 
 ### Running Tests
 ```bash
-npm test                    # Run all tests
-npm run test:watch        # Watch mode
-npm run test:coverage     # With coverage report
+npm test                    # Run isolated backend API tests
+npm run test:coverage       # Run tests and report actual server coverage
+npm --prefix server run test:watch
+npm run lint
+npm run build
 ```
+
+## Current Coverage
+
+The focused backend suite currently reports 41.4% statements, 29.77% branches,
+37.25% functions, and 42.9% lines. These are measured values, not a
+production-readiness claim.
 
 ## Test Coverage Goals
 
@@ -126,11 +139,9 @@ jest.mock("../services/emailService", () => ({
 
 ## CI/CD Integration
 
-Tests should run automatically:
-- On every pull request
-- Before merging to main
-- On deployment
-- Fail if coverage drops below threshold
+The repository workflow in `.github/workflows/ci.yml` runs backend tests against
+MongoDB Memory Server, frontend lint, and the frontend production build. It
+does not require production secrets or Stripe credentials.
 
 ## Performance Testing
 
@@ -144,6 +155,12 @@ Tests should run automatically:
 - [ ] CSRF token validation
 - [ ] Rate limit effectiveness
 - [ ] JWT token expiry
+
+## Current Limitations
+
+- Stripe checkout, webhooks, and refunds are not automated because no Stripe test credentials or mock contract suite is configured.
+- Seller product ownership routes are not tested because the current API exposes admin-only product mutation routes, not seller-scoped product management routes.
+- Frontend component tests and Playwright E2E tests are not configured yet.
 
 ## Future Test Improvements
 
