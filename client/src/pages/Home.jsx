@@ -189,10 +189,10 @@ function Home({ addToCart }) {
           gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
           gap: '1rem'
         }}>
-          {['Electronics', 'Fashion', 'Home & Living', 'Sports'].map((cat) => (
+          {[['Electronics', 'Electronics'], ['Fashion', 'Fashion'], ['Home & Kitchen', 'Home & Living'], ['Sports & Fitness', 'Sports']].map(([value, label]) => (
             <Link
-              key={cat}
-              to={`/products?category=${cat}`}
+              key={value}
+              to={`/products?category=${encodeURIComponent(value)}`}
               style={{
                 padding: '2rem',
                 borderRadius: '12px',
@@ -214,7 +214,7 @@ function Home({ addToCart }) {
                 e.target.style.boxShadow = 'none';
               }}
             >
-              {cat}
+              {label}
             </Link>
           ))}
         </div>

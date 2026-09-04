@@ -17,13 +17,15 @@ function Products({ addToCart }) {
   const [error, setError] = useState('');
   const [filterOpen, setFilterOpen] = useState(true);
   const [searchParams] = useSearchParams();
+  const searchParamsString = searchParams.toString();
 
   useEffect(() => {
-    setSearch(searchParams.get('search') || '');
-    setCategory(searchParams.get('category') || 'all');
-    setBrand(searchParams.get('brand') || 'all');
-    setPageFromUrl(Number(searchParams.get('page') || 1));
-  }, [searchParams]);
+    const nextParams = new URLSearchParams(searchParamsString);
+    setSearch(nextParams.get('search') || '');
+    setCategory(nextParams.get('category') || 'all');
+    setBrand(nextParams.get('brand') || 'all');
+    setPageFromUrl(Number(nextParams.get('page') || 1));
+  }, [searchParamsString]);
 
   const [page, setPageFromUrl] = useState(1);
 
@@ -74,9 +76,9 @@ function Products({ addToCart }) {
   };
 
   return (
-    <section style={{ display: 'grid', gridTemplateColumns: filterOpen ? '280px 1fr' : '1fr', gap: '2rem', padding: '2rem max(1.5rem, calc((100vw - 1400px) / 2))' }}>
+    <section className="products-page" style={{ display: 'grid', gridTemplateColumns: filterOpen ? '280px 1fr' : '1fr', gap: '2rem', padding: '2rem max(1.5rem, calc((100vw - 1400px) / 2))' }}>
       {/* FILTERS SIDEBAR */}
-      <div style={{
+      <div className="products-filter-panel" style={{
         display: filterOpen ? 'flex' : 'none',
         flexDirection: 'column',
         gap: '1.5rem',
@@ -86,13 +88,13 @@ function Products({ addToCart }) {
         borderRadius: '12px',
         height: 'fit-content',
         position: 'sticky',
-        top: '120px',
-        '@media (max-width: 768px)': { position: 'fixed', left: 0, top: 0, width: '100%', height: '100%', zIndex: 1000, overflowY: 'auto' }
+        top: '120px'
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: '700' }}>Filters</h3>
           {activeFiltersCount > 0 && (
             <button
+              className="filter-toggle-button"
               onClick={clearFilters}
               style={{
                 background: 'transparent',
@@ -248,8 +250,7 @@ function Products({ addToCart }) {
                 alignItems: 'center',
                 gap: '0.5rem',
                 fontWeight: '600',
-                color: 'var(--primary)',
-                '@media (max-width: 768px)': { display: 'flex' }
+                color: 'var(--primary)'
               }}
             >
               <FaFilter /> Filters {activeFiltersCount > 0 && `(${activeFiltersCount})`}

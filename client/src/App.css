@@ -513,6 +513,24 @@ main {
   max-width: 280px;
 }
 
+@media (max-width: 768px) {
+  .products-page {
+    grid-template-columns: 1fr !important;
+    padding: 1rem !important;
+  }
+
+  .products-filter-panel {
+    position: fixed !important;
+    left: 0;
+    top: 0 !important;
+    width: 100%;
+    height: 100%;
+    z-index: 1000;
+    overflow-y: auto;
+    border-radius: 0 !important;
+  }
+}
+
 .filter-group {
   display: flex;
   flex-direction: column;

@@ -221,8 +221,8 @@ function Header({ cart }) {
         <NavLink to="/products">🏠 All Products</NavLink>
         <NavLink to="/products?category=Electronics">💻 Electronics</NavLink>
         <NavLink to="/products?category=Fashion">👕 Fashion</NavLink>
-        <NavLink to="/products?category=Home">🏡 Home & Living</NavLink>
-        <NavLink to="/products?category=Sports">⚽ Sports</NavLink>
+        <NavLink to="/products?category=Home%20%26%20Kitchen">🏡 Home & Living</NavLink>
+        <NavLink to="/products?category=Sports%20%26%20Fitness">⚽ Sports</NavLink>
         <NavLink to="/partner" style={{ marginLeft: 'auto', color: 'var(--primary)', fontWeight: '600' }}>
           📈 Sell with Us
         </NavLink>
@@ -333,7 +333,7 @@ function App() {
               <Link to="/products">All Products</Link>
               <Link to="/products?category=Electronics">Electronics</Link>
               <Link to="/products?category=Fashion">Fashion</Link>
-              <Link to="/products?category=Home">Home & Living</Link>
+              <Link to="/products?category=Home%20%26%20Kitchen">Home & Living</Link>
               <Link to="/partner">Become a Seller</Link>
             </div>
             <div>
