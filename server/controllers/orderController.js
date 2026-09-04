@@ -3,7 +3,48 @@ const Product = require("../models/Product");
 const { getTracking } = require("../services/shippingService");
 const { processRefund, releaseReservedStock } = require("../services/refundService");
 
+const normaliseItems = (items) => {
+  const quantities = new Map();
+
+  for (const item of items) {
+    const productId = String(item?.product || "");
+    const quantity = Number(item?.quantity);
+    if (!productId || !Number.isInteger(quantity) || quantity < 1) {
+      throw Object.assign(new Error("Each item needs a valid product and quantity"), { statusCode: 400 });
+    }
+    quantities.set(productId, (quantities.get(productId) || 0) + quantity);
+  }
+
+  return [...quantities.entries()].map(([product, quantity]) => ({ product, quantity }));
+};
+
+const reserveStock = async (items) => {
+  const reserved = [];
+
+  try {
+    for (const item of items) {
+      const product = await Product.findOneAndUpdate(
+        { _id: item.product, active: true, deleted: false, stock: { $gte: item.quantity } },
+        { $inc: { stock: -item.quantity } },
+        { returnDocument: "after" }
+      );
+
+      if (!product) {
+        throw Object.assign(new Error("One or more products are unavailable or out of stock"), { statusCode: 400 });
+      }
+
+      reserved.push({ product, quantity: item.quantity });
+    }
+    return reserved;
+  } catch (error) {
+    await Promise.all(reserved.map(({ product, quantity }) => Product.findByIdAndUpdate(product._id, { $inc: { stock: quantity } })));
+    throw error;
+  }
+};
+
 const createOrder = async (req, res) => {
+  const idempotencyKey = String(req.get("Idempotency-Key") || "").trim();
+
   try {
     const { items, shippingAddress } = req.body;
 
@@ -11,52 +52,39 @@ const createOrder = async (req, res) => {
       return res.status(400).json({ message: "Items and shipping address are required" });
     }
 
-    const productIds = items.map((item) => item.product);
-    const products = await Product.find({ _id: { $in: productIds }, active: true, deleted: false });
-    const productMap = new Map(products.map((product) => [product.id, product]));
+    if (idempotencyKey.length > 100) return res.status(400).json({ message: "Idempotency-Key is too long" });
+    if (idempotencyKey) {
+      const existing = await Order.findOne({ user: req.user.id, idempotencyKey });
+      if (existing) return res.status(200).json({ message: "Order already created", order: existing, idempotent: true });
+    }
 
-    const orderItems = items.map((item) => {
-      const product = productMap.get(item.product);
-      const quantity = Number(item.quantity);
-
-      if (!product) {
-        throw Object.assign(
-          new Error("One or more products no longer exist"),
-          { statusCode: 400 }
-        );
-      }
-
-      if (!Number.isInteger(quantity) || quantity < 1 || quantity > product.stock) {
-        throw Object.assign(
-          new Error(`Insufficient stock for ${product.name}`),
-          { statusCode: 400 }
-        );
-      }
-
-      return {
-        product: product._id,
-        name: product.name,
-        price: product.price,
-        quantity,
-        sku: product.sku || null
-      };
-    });
+    const requestedItems = normaliseItems(items);
+    const reserved = await reserveStock(requestedItems);
+    const orderItems = reserved.map(({ product, quantity }) => ({
+      product: product._id,
+      name: product.name,
+      price: product.price,
+      quantity,
+      sku: product.sku || null
+    }));
 
     const subtotal = orderItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
-    const order = await Order.create({
-      user: req.user.id,
-      items: orderItems,
-      shippingAddress,
-      subtotal,
-      total: subtotal,
-      status: "pending_payment"
-    });
+    let order;
 
-    await Promise.all(
-      orderItems.map((item) =>
-        Product.findByIdAndUpdate(item.product, { $inc: { stock: -item.quantity } })
-      )
-    );
+    try {
+      order = await Order.create({
+        user: req.user.id,
+        idempotencyKey: idempotencyKey || undefined,
+        items: orderItems,
+        shippingAddress,
+        subtotal,
+        total: subtotal,
+        status: "pending_payment"
+      });
+    } catch (error) {
+      await Promise.all(reserved.map(({ product, quantity }) => Product.findByIdAndUpdate(product._id, { $inc: { stock: quantity } })));
+      throw error;
+    }
 
     res.status(201).json({ message: "Order created successfully", order });
   } catch (error) {

@@ -23,6 +23,10 @@ const orderSchema = new mongoose.Schema(
       required: true,
       index: true
     },
+    idempotencyKey: {
+      type: String,
+      trim: true
+    },
     items: {
       type: [orderItemSchema],
       required: true,
@@ -139,6 +143,7 @@ const orderSchema = new mongoose.Schema(
 );
 
 orderSchema.index({ user: 1, createdAt: -1 });
+orderSchema.index({ user: 1, idempotencyKey: 1 }, { unique: true, sparse: true });
 orderSchema.index({ status: 1, createdAt: -1 });
 
 module.exports = mongoose.model("Order", orderSchema);

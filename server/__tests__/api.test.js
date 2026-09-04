@@ -32,6 +32,12 @@ const secondCustomerCredentials = {
   password: "TestPassword#123"
 };
 
+const sellerCredentials = {
+  name: "Test Seller",
+  email: "seller@test.local",
+  password: "TestPassword#123"
+};
+
 const login = async (email, password) => {
   const response = await request(app).post("/api/auth/login").send({ email, password });
   return response.body.token;
@@ -48,7 +54,8 @@ beforeAll(async () => {
   await User.create([
     { ...adminCredentials, password, role: "admin", emailVerified: true },
     { ...customerCredentials, password, role: "customer", emailVerified: true },
-    { ...secondCustomerCredentials, password, role: "customer", emailVerified: true }
+    { ...secondCustomerCredentials, password, role: "customer", emailVerified: true },
+    { ...sellerCredentials, password, role: "seller", emailVerified: true }
   ]);
   await Product.create({
     name: "Test Laptop",
@@ -244,6 +251,52 @@ describe("wishlist and reviews", () => {
   });
 });
 
+describe("seller ownership", () => {
+  test("allows sellers to manage only their own products", async () => {
+    const sellerToken = await login(sellerCredentials.email, sellerCredentials.password);
+    const customerToken = await login(customerCredentials.email, customerCredentials.password);
+    const ownPayload = {
+      name: "Seller-Owned Product",
+      description: "A seller-owned test product",
+      category: "Fashion",
+      brand: "SellerBrand",
+      price: 45,
+      stock: 5,
+      sku: "SELLER-OWNED-001",
+      image: "https://example.com/seller-owned.jpg",
+      images: ["https://example.com/seller-owned.jpg"]
+    };
+    const otherProduct = await Product.create({
+      name: "Other Owner Product",
+      description: "Owned by the admin for authorization testing",
+      category: "Fashion",
+      brand: "OtherBrand",
+      price: 60,
+      sku: "OTHER-OWNER-001",
+      slug: "other-owner-product",
+      stock: 3,
+      active: true,
+      deleted: false,
+      seller: (await User.findOne({ email: adminCredentials.email }))._id
+    });
+
+    const customerList = await request(app).get("/api/sellers/products").set("Authorization", `Bearer ${customerToken}`);
+    const created = await request(app).post("/api/sellers/products").set("Authorization", `Bearer ${sellerToken}`).send(ownPayload);
+    const ownList = await request(app).get("/api/sellers/products").set("Authorization", `Bearer ${sellerToken}`);
+    const ownUpdate = await request(app).put(`/api/sellers/products/${created.body.product._id}`).set("Authorization", `Bearer ${sellerToken}`).send({ ...ownPayload, price: 50 });
+    const otherUpdate = await request(app).put(`/api/sellers/products/${otherProduct._id}`).set("Authorization", `Bearer ${sellerToken}`).send({ ...ownPayload, sku: "SELLER-OTHER-001" });
+    const otherDelete = await request(app).delete(`/api/sellers/products/${otherProduct._id}`).set("Authorization", `Bearer ${sellerToken}`);
+
+    expect(customerList.status).toBe(403);
+    expect(created.status).toBe(201);
+    expect(ownList.body.products).toHaveLength(1);
+    expect(ownUpdate.status).toBe(200);
+    expect(ownUpdate.body.product.price).toBe(50);
+    expect(otherUpdate.status).toBe(404);
+    expect(otherDelete.status).toBe(404);
+  });
+});
+
 describe("orders", () => {
   test("uses server prices, decrements stock, and isolates order ownership", async () => {
     const customerToken = await login(customerCredentials.email, customerCredentials.password);
@@ -266,6 +319,12 @@ describe("orders", () => {
     const created = await request(app)
       .post("/api/orders")
       .set("Authorization", `Bearer ${customerToken}`)
+      .set("Idempotency-Key", "order-test-key-1")
+      .send({ items: [{ product: product._id, quantity: 2, price: 1 }], shippingAddress });
+    const retry = await request(app)
+      .post("/api/orders")
+      .set("Authorization", `Bearer ${customerToken}`)
+      .set("Idempotency-Key", "order-test-key-1")
       .send({ items: [{ product: product._id, quantity: 2, price: 1 }], shippingAddress });
     const orders = await request(app)
       .get("/api/orders")
@@ -279,6 +338,9 @@ describe("orders", () => {
     expect(created.body.order.subtotal).toBe(150);
     expect(created.body.order.total).toBe(150);
     expect(created.body.order.items[0].price).toBe(75);
+    expect(retry.status).toBe(200);
+    expect(retry.body.idempotent).toBe(true);
+    expect(retry.body.order._id).toBe(created.body.order._id);
     expect(refreshed.stock).toBe(1);
     expect(orders.body.pagination.total).toBe(1);
     expect(otherOrders.body.pagination.total).toBe(0);
@@ -300,5 +362,34 @@ describe("orders", () => {
 
     expect(insufficient.status).toBe(400);
     expect(invalid.status).toBe(400);
+  });
+
+  test("prevents concurrent overselling with atomic stock conditions", async () => {
+    const customerToken = await login(customerCredentials.email, customerCredentials.password);
+    const product = await Product.create({
+      name: "Concurrency Test Product",
+      description: "One-unit inventory for race testing",
+      category: "Electronics",
+      brand: "TestBrand",
+      price: 20,
+      sku: "CONCURRENCY-TEST-001",
+      slug: "concurrency-test-product",
+      stock: 1,
+      active: true,
+      deleted: false
+    });
+    const shippingAddress = { name: "Test Customer", street: "1 Test Road", city: "Test City", postalCode: "000001", country: "Testland" };
+
+    const responses = await Promise.all([
+      request(app).post("/api/orders").set("Authorization", `Bearer ${customerToken}`).send({ items: [{ product: product._id, quantity: 1 }], shippingAddress }),
+      request(app).post("/api/orders").set("Authorization", `Bearer ${customerToken}`).send({ items: [{ product: product._id, quantity: 1 }], shippingAddress })
+    ]);
+    const refreshed = await Product.findById(product._id);
+    const successful = responses.filter((response) => response.status === 201);
+    const rejected = responses.filter((response) => response.status === 400);
+
+    expect(successful).toHaveLength(1);
+    expect(rejected).toHaveLength(1);
+    expect(refreshed.stock).toBe(0);
   });
 });
