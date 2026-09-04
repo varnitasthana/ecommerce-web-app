@@ -69,6 +69,27 @@ const getProductById = async (req, res) => {
   }
 };
 
+const getProductRecommendations = async (req, res) => {
+  try {
+    const product = await Product.findOne({ _id: req.params.id, active: true, deleted: false }).lean();
+    if (!product) return res.status(404).json({ message: "Product not found" });
+
+    const recommendations = await Product.find({
+      _id: { $ne: product._id },
+      active: true,
+      deleted: false,
+      $or: [{ category: product.category }, { brand: product.brand }]
+    })
+      .sort({ rating: -1, purchases: -1, createdAt: -1 })
+      .limit(8)
+      .lean();
+
+    res.status(200).json({ products: recommendations.map(publicProduct) });
+  } catch (error) {
+    res.status(500).json({ message: "Unable to load recommendations" });
+  }
+};
+
 const getCatalogFacets = async (req, res) => {
   const [categories, brands] = await Promise.all([
     Product.distinct("category", { active: true, deleted: false }),
@@ -120,4 +141,4 @@ const deleteProduct = async (req, res) => {
   }
 };
 
-module.exports = { getProducts, getProductById, getCatalogFacets, createProduct, updateProduct, deleteProduct };
+module.exports = { getProducts, getProductById, getProductRecommendations, getCatalogFacets, createProduct, updateProduct, deleteProduct };

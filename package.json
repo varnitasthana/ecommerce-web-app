@@ -9,9 +9,12 @@
     "test": "npm --prefix server test",
     "test:coverage": "npm --prefix server run test:coverage",
     "lint": "npm --prefix client run lint",
-    "build": "npm --prefix client run build"
+    "build": "npm --prefix client run build",
+    "test:client": "npm --prefix client test",
+    "test:e2e": "playwright test"
   },
   "devDependencies": {
+    "@playwright/test": "^1.62.1",
     "concurrently": "^9.1.0"
   }
 }

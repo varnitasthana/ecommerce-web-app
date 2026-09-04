@@ -10,9 +10,10 @@ Backend API tests live in `server/__tests__/api.test.js` and use Jest,
 Supertest, and MongoDB Memory Server. The suite creates and destroys an
 isolated in-memory database and never connects to the development seed data.
 
-There is currently no frontend unit-test runner or Playwright project. Browser
-smoke checks are performed separately against the running local app and are not
-counted as automated E2E tests.
+The frontend has a Vitest/Testing Library smoke test in `client/src/test`.
+Playwright smoke tests live in `e2e` and run against the already-started local
+application; CI currently runs the isolated backend and frontend component
+checks, while browser tests remain a local/preview validation step.
 
 ### Running Tests
 ```bash

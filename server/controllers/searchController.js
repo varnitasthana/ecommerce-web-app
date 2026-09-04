@@ -1,5 +1,7 @@
 const Product = require("../models/Product");
 
+const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
 const VALID_SORTS = {
   newest: { createdAt: -1 },
   oldest: { createdAt: 1 },
@@ -258,8 +260,28 @@ const getProductsByBrand = async (req, res) => {
   }
 };
 
+const getSearchSuggestions = async (req, res) => {
+  const query = String(req.query.q || "").trim();
+  if (query.length < 2) return res.status(200).json({ suggestions: [] });
+  if (query.length > 80) return res.status(400).json({ message: "Search query is too long" });
+
+  const pattern = new RegExp(escapeRegex(query), "i");
+  const products = await Product.find({
+    active: true,
+    deleted: false,
+    $or: [{ name: pattern }, { brand: pattern }, { category: pattern }]
+  })
+    .sort({ purchases: -1, rating: -1 })
+    .limit(8)
+    .select("_id name brand category image price")
+    .lean();
+
+  res.status(200).json({ suggestions: products });
+};
+
 module.exports = {
   searchProducts,
   getProductsByCategory,
-  getProductsByBrand
+  getProductsByBrand,
+  getSearchSuggestions
 };

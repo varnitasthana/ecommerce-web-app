@@ -1,11 +1,16 @@
 process.env.NODE_ENV = "test";
 process.env.JWT_SECRET = "test-only-secret-that-is-long-enough-2026";
+process.env.STRIPE_SECRET_KEY = "sk_test_unit_only";
+process.env.STRIPE_WEBHOOK_SECRET = "whsec_unit_only";
 
 const request = require("supertest");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const { MongoMemoryServer } = require("mongodb-memory-server");
 const mongoose = require("mongoose");
+const mockStripe = { webhooks: { constructEvent: jest.fn() } };
+
+jest.mock("stripe", () => jest.fn(() => mockStripe));
 
 jest.setTimeout(30000);
 
@@ -13,6 +18,7 @@ let mongoServer;
 let app;
 let User;
 let Product;
+let Order;
 
 const adminCredentials = {
   name: "Test Admin",
@@ -50,6 +56,7 @@ beforeAll(async () => {
   ({ app } = require("../server"));
   User = require("../models/User");
   Product = require("../models/Product");
+  Order = require("../models/Order");
   const password = await bcrypt.hash(adminCredentials.password, 10);
   await User.create([
     { ...adminCredentials, password, role: "admin", emailVerified: true },
@@ -148,6 +155,18 @@ describe("catalog and authorization", () => {
     expect(detail.body.name).toBe("Test Laptop");
   });
 
+  test("serves bounded suggestions and related products", async () => {
+    const suggestions = await request(app).get("/api/search/suggestions?q=Test");
+    const product = await Product.findOne({ sku: "TEST-LAPTOP-001" });
+    const recommendations = await request(app).get(`/api/products/${product._id}/recommendations`);
+
+    expect(suggestions.status).toBe(200);
+    expect(suggestions.body.suggestions[0].name).toBe("Test Laptop");
+    expect(recommendations.status).toBe(200);
+    expect(Array.isArray(recommendations.body.products)).toBe(true);
+    expect(recommendations.body.products.find((item) => String(item._id) === String(product._id))).toBeUndefined();
+  });
+
   test("rejects unsafe catalog query parameters and sends security headers", async () => {
     const invalidPage = await request(app).get("/api/products?page=0");
     const invalidRating = await request(app).get("/api/products?minRating=8");
@@ -182,6 +201,17 @@ describe("catalog and authorization", () => {
     expect(forbidden.status).toBe(403);
     expect(created.status).toBe(201);
     expect(duplicate.status).toBe(409);
+  });
+
+  test("restricts admin overview metrics to admins", async () => {
+    const adminToken = await login(adminCredentials.email, adminCredentials.password);
+    const customerToken = await login(customerCredentials.email, customerCredentials.password);
+    const adminOverview = await request(app).get("/api/admin/overview").set("Authorization", `Bearer ${adminToken}`);
+    const customerOverview = await request(app).get("/api/admin/overview").set("Authorization", `Bearer ${customerToken}`);
+
+    expect(adminOverview.status).toBe(200);
+    expect(adminOverview.body).toEqual(expect.objectContaining({ customers: expect.any(Number), products: expect.any(Number), lowStockProducts: expect.any(Number) }));
+    expect(customerOverview.status).toBe(403);
   });
 
   test("soft-deleted products are no longer publicly visible", async () => {
@@ -365,7 +395,8 @@ describe("orders", () => {
   });
 
   test("prevents concurrent overselling with atomic stock conditions", async () => {
-    const customerToken = await login(customerCredentials.email, customerCredentials.password);
+    const customer = await User.findOne({ email: customerCredentials.email });
+    const customerToken = jwt.sign({ id: customer._id, role: "customer" }, process.env.JWT_SECRET, { expiresIn: "1h" });
     const product = await Product.create({
       name: "Concurrency Test Product",
       description: "One-unit inventory for race testing",
@@ -391,5 +422,64 @@ describe("orders", () => {
     expect(successful).toHaveLength(1);
     expect(rejected).toHaveLength(1);
     expect(refreshed.stock).toBe(0);
+  });
+});
+
+describe("Stripe webhook contract", () => {
+  test("confirms paid webhooks once and releases stock on failed payment", async () => {
+    const customer = await User.findOne({ email: customerCredentials.email });
+    const product = await Product.findOne({ sku: "ORDER-TEST-001" });
+    const order = await Order.create({
+      user: customer._id,
+      items: [{ product: product._id, name: product.name, price: product.price, quantity: 1 }],
+      shippingAddress: { name: "Test Customer", street: "1 Test Road", city: "Test City", postalCode: "000001", country: "Testland" },
+      subtotal: product.price,
+      total: product.price,
+      status: "pending_payment",
+      paymentStatus: "pending",
+      stockReserved: true
+    });
+    await Product.findByIdAndUpdate(product._id, { $inc: { stock: -1 } });
+    mockStripe.webhooks.constructEvent.mockReturnValue({
+      id: "evt_paid_1",
+      type: "checkout.session.completed",
+      data: { object: { metadata: { orderId: String(order._id) }, payment_status: "paid", payment_intent: "pi_test_1", id: "cs_test_1" } }
+    });
+
+    const paid = await request(app).post("/api/payments/webhook").set("stripe-signature", "test-signature").send(Buffer.from("{}"));
+    const confirmed = await Order.findById(order._id);
+    const duplicate = await request(app).post("/api/payments/webhook").set("stripe-signature", "test-signature").send(Buffer.from("{}"));
+
+    expect(paid.status).toBe(200);
+    expect(confirmed.paymentStatus).toBe("paid");
+    expect(confirmed.status).toBe("confirmed");
+    expect(duplicate.body.idempotent).toBe(true);
+
+    const failedOrder = await Order.create({
+      user: customer._id,
+      items: [{ product: product._id, name: product.name, price: product.price, quantity: 1 }],
+      shippingAddress: { name: "Test Customer", street: "1 Test Road", city: "Test City", postalCode: "000001", country: "Testland" },
+      subtotal: product.price,
+      total: product.price,
+      status: "pending_payment",
+      paymentStatus: "pending",
+      stockReserved: true
+    });
+    const stockBeforeFailure = (await Product.findById(product._id)).stock;
+    await Product.findByIdAndUpdate(product._id, { $inc: { stock: -1 } });
+    mockStripe.webhooks.constructEvent.mockReturnValueOnce({
+      id: "evt_failed_1",
+      type: "checkout.session.expired",
+      data: { object: { metadata: { orderId: String(failedOrder._id) }, id: "cs_test_failed" } }
+    });
+
+    const failed = await request(app).post("/api/payments/webhook").set("stripe-signature", "test-signature").send(Buffer.from("{}"));
+    const failedState = await Order.findById(failedOrder._id);
+    const stockAfterFailure = (await Product.findById(product._id)).stock;
+
+    expect(failed.status).toBe(200);
+    expect(failedState.paymentStatus).toBe("failed");
+    expect(failedState.status).toBe("cancelled");
+    expect(stockAfterFailure).toBe(stockBeforeFailure);
   });
 });

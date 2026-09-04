@@ -8,11 +8,13 @@ function Admin() {
   const [form, setForm] = useState(emptyForm);
   const [editingId, setEditingId] = useState(null);
   const [message, setMessage] = useState('');
+  const [overview, setOverview] = useState(null);
 
   const loadProducts = () => {
     api.get('/products')
       .then((response) => setProducts(Array.isArray(response.data) ? response.data : response.data.products || []))
       .catch((error) => setMessage(error.response?.data?.message || 'Could not load products'));
+    api.get('/admin/overview').then(({ data }) => setOverview(data)).catch(() => setOverview(null));
   };
 
   useEffect(() => {
@@ -75,6 +77,18 @@ function Admin() {
   return (
     <section className="page-block">
       <h2>Admin Panel</h2>
+      {overview && (
+        <div className="admin-overview-grid">
+          {[
+            ['Customers', overview.customers],
+            ['Sellers', overview.sellers],
+            ['Active products', overview.activeProducts],
+            ['Orders', overview.orders],
+            ['Pending orders', overview.pendingOrders],
+            ['Low stock', overview.lowStockProducts]
+          ].map(([label, value]) => <div className="admin-stat" key={label}><strong>{value}</strong><span>{label}</span></div>)}
+        </div>
+      )}
       <form className="admin-form" onSubmit={handleSubmit}>
         <h3>{editingId ? 'Edit product' : 'Add product'}</h3>
         <input name="name" placeholder="Product name" value={form.name} onChange={handleChange} required />

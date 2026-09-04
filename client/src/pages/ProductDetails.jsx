@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import { FaHeart, FaRegHeart, FaShoppingCart } from 'react-icons/fa';
 import api from '../services/api';
 
@@ -12,12 +12,14 @@ function ProductDetails({ addToCart }) {
   const [messageType, setMessageType] = useState('');
   const [saved, setSaved] = useState(false);
   const [quantity, setQuantity] = useState(1);
+  const [recommendations, setRecommendations] = useState([]);
 
   useEffect(() => {
     api.get(`/products/${id}`)
       .then((response) => setProduct(response.data))
       .catch(() => setProduct(null));
     api.get(`/reviews/${id}`).then((response) => setReviews(response.data)).catch(() => setReviews([]));
+    api.get(`/products/${id}/recommendations`).then((response) => setRecommendations(response.data.products || [])).catch(() => setRecommendations([]));
   }, [id]);
 
   const toggleWishlist = async () => {
@@ -68,9 +70,9 @@ function ProductDetails({ addToCart }) {
   const reviewCount = reviews.length || 128;
 
   return (
-    <section style={{ padding: '2rem max(1.5rem, calc((100vw - 1400px) / 2))' }}>
+    <section className="product-details-page" style={{ padding: '2rem max(1.5rem, calc((100vw - 1400px) / 2))' }}>
       {/* MAIN PRODUCT DETAILS */}
-      <div style={{
+      <div className="product-details-grid" style={{
         display: 'grid',
         gridTemplateColumns: '1fr 1fr',
         gap: '3rem',
@@ -517,6 +519,20 @@ function ProductDetails({ addToCart }) {
           </p>
         )}
       </div>
+
+      {recommendations.length > 0 && (
+        <section className="recommendation-section">
+          <div className="section-heading"><div><p className="eyebrow">Curated for you</p><h2>Customers also explore</h2></div></div>
+          <div className="recommendation-grid">
+            {recommendations.map((item) => (
+              <article className="recommendation-card" key={item._id}>
+                <Link to={`/products/${item._id}`}><img src={item.image || 'https://via.placeholder.com/240x180'} alt={item.name} /></Link>
+                <div><small>{item.brand}</small><h3>{item.name}</h3><strong>₹{item.price}</strong><button onClick={() => addToCart(item, 1)}>Add to cart</button></div>
+              </article>
+            ))}
+          </div>
+        </section>
+      )}
     </section>
   );
 }

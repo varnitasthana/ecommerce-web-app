@@ -16,6 +16,7 @@ function Products({ addToCart }) {
   const [pagination, setPagination] = useState({ page: 1, total: 0, totalPages: 0 });
   const [error, setError] = useState('');
   const [filterOpen, setFilterOpen] = useState(true);
+  const [suggestions, setSuggestions] = useState([]);
   const [searchParams] = useSearchParams();
   const searchParamsString = searchParams.toString();
 
@@ -49,6 +50,19 @@ function Products({ addToCart }) {
         setError(requestError.response?.data?.message || 'Unable to load products');
       });
   }, [search, category, brand, minPrice, maxPrice, minRating, availability, sort, page]);
+
+  useEffect(() => {
+    if (search.trim().length < 2) {
+      setSuggestions([]);
+      return undefined;
+    }
+    const timer = window.setTimeout(() => {
+      api.get('/search/suggestions', { params: { q: search.trim() } })
+        .then((response) => setSuggestions(response.data.suggestions || []))
+        .catch(() => setSuggestions([]));
+    }, 250);
+    return () => window.clearTimeout(timer);
+  }, [search]);
 
   const categories = [...new Set(products.map((product) => product.category).filter(Boolean))];
   const brands = [...new Set(products.map((product) => product.brand).filter(Boolean))];
@@ -229,7 +243,7 @@ function Products({ addToCart }) {
       {/* MAIN CONTENT */}
       <div>
         {/* HEADER WITH SEARCH & SORT */}
-        <div style={{
+        <div className="catalog-search-shell" style={{
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
@@ -308,6 +322,16 @@ function Products({ addToCart }) {
               }}
             />
           </div>
+          {suggestions.length > 0 && (
+            <div className="catalog-suggestions">
+              {suggestions.map((suggestion) => (
+                <Link key={suggestion._id} to={`/products/${suggestion._id}`} onClick={() => setSuggestions([])} className="catalog-suggestion">
+                  <img src={suggestion.image || 'https://via.placeholder.com/48x48'} alt="" />
+                  <span><strong>{suggestion.name}</strong><small>{suggestion.brand} · ₹{suggestion.price}</small></span>
+                </Link>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* ERROR MESSAGE */}

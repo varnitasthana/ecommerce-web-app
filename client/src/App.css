@@ -1038,6 +1038,102 @@ main {
   color: var(--danger);
 }
 
+.catalog-search-shell {
+  position: relative;
+}
+
+.catalog-suggestions {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% - 1rem);
+  left: 1rem;
+  right: 1rem;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: white;
+  box-shadow: var(--shadow-lg);
+}
+
+.catalog-suggestion {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.7rem 0.9rem;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.catalog-suggestion:last-child { border-bottom: 0; }
+.catalog-suggestion:hover { background: var(--bg-secondary); }
+.catalog-suggestion img { width: 42px; height: 42px; object-fit: cover; border-radius: 6px; }
+.catalog-suggestion span { display: grid; gap: 0.15rem; }
+.catalog-suggestion small { color: var(--text-tertiary); }
+
+.recommendation-section {
+  margin: 2rem 0;
+}
+
+.recommendation-section h2 {
+  margin: 0;
+  font-size: 1.4rem;
+}
+
+.recommendation-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 1rem;
+}
+
+.recommendation-card {
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: white;
+}
+
+.recommendation-card img {
+  width: 100%;
+  aspect-ratio: 1.2;
+  object-fit: cover;
+  background: var(--bg-secondary);
+}
+
+.recommendation-card > div { display: grid; gap: 0.45rem; padding: 0.85rem; }
+.recommendation-card small { color: var(--text-tertiary); text-transform: uppercase; font-weight: 700; }
+.recommendation-card h3 { margin: 0; font-size: 0.95rem; }
+.recommendation-card button { padding: 0.55rem; border-radius: 6px; background: var(--primary); color: white; font-weight: 700; }
+
+.admin-overview-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(100px, 1fr));
+  gap: 0.75rem;
+  margin: 1.5rem 0;
+}
+
+.admin-stat {
+  display: grid;
+  gap: 0.2rem;
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: white;
+}
+
+.admin-stat strong { font-size: 1.5rem; color: var(--primary); }
+.admin-stat span { color: var(--text-secondary); font-size: 0.8rem; }
+
+@media (max-width: 768px) {
+  .product-details-grid {
+    grid-template-columns: 1fr !important;
+    gap: 1.5rem !important;
+    padding: 1rem !important;
+  }
+
+  .product-details-page { padding: 1rem !important; }
+  .recommendation-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .admin-overview-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
 /* ============== CART & CHECKOUT ============== */
 .cart-list,
 .orders-list,

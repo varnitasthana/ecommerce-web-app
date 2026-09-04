@@ -20,6 +20,7 @@ const { integrationStatus } = require("./config/integrations");
 const { validateEnvironment } = require("./config/env");
 const { notFound, errorHandler } = require("./middleware/errorHandler");
 const userRoutes = require("./routes/userRoutes");
+const adminRoutes = require("./routes/adminRoutes");
 
 const app = express();
 
@@ -50,6 +51,7 @@ app.use("/api/sellers", sellerRoutes);
 app.use("/api/payments", paymentRoutes);
 app.use("/api/media", mediaRoutes);
 app.use("/api/users", userRoutes);
+app.use("/api/admin", adminRoutes);
 
 app.get("/", (req, res) => {
   res.json({
