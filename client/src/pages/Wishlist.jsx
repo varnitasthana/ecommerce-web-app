@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../services/api';
+import Button from '../components/Button';
 
 function Wishlist({ addToCart }) {
   const [products, setProducts] = useState([]);
@@ -19,31 +20,46 @@ function Wishlist({ addToCart }) {
   };
 
   return (
-    <section className="page-block">
-      <div className="section-heading">
+    <section className="page-block" style={{ maxWidth: '1200px', margin: '0 auto' }}>
+      <div className="section-heading home-section-heading">
         <div>
           <p className="eyebrow">Saved for later</p>
-          <h2>My wishlist</h2>
+          <h2>My Wishlist</h2>
         </div>
-        <span>{products.length} saved</span>
+        <span className="muted">{products.length} saved</span>
       </div>
-      {!products.length && <p className="empty-state">Your wishlist is waiting for its first find.</p>}
-      <div className="product-grid">
-        {products.map((product) => (
-          <article className="product-card" key={product._id}>
-            <img src={product.image || 'https://via.placeholder.com/300x220'} alt={product.name} />
-            <div className="product-card-body">
-              <p className="eyebrow">{product.brand}</p>
-              <h3>{product.name}</h3>
-              <div className="product-meta"><span>₹{product.price}</span><Link to={`/products/${product._id}`}>View</Link></div>
-              <div className="hero-actions">
-                <button onClick={() => addToCart(product)}>Add to cart</button>
-                <button className="secondary-btn" onClick={() => remove(product._id)}>Remove</button>
+      {!products.length ? (
+        <div className="card text-center" style={{ padding: '3rem 2rem' }}>
+          <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>❤️</div>
+          <h3 style={{ margin: '0 0 0.5rem', color: 'var(--text-primary)' }}>Your wishlist is empty</h3>
+          <p className="muted" style={{ marginBottom: '1.5rem' }}>Save items you love and come back to them later.</p>
+          <Button to="/products">Browse Products</Button>
+        </div>
+      ) : (
+        <div className="product-grid">
+          {products.map((product) => (
+            <Link to={`/products/${product._id}`} className="product-card-link" key={product._id}>
+              <div className="product-card">
+                <div className="product-card-image">
+                  <img src={product.image || 'https://via.placeholder.com/300x220'} alt={product.name} />
+                </div>
+                <div className="product-card-body">
+                  <p className="eyebrow">{product.brand}</p>
+                  <h3>{product.name}</h3>
+                  <div className="product-meta">
+                    <span className="product-price-current">₹{product.price}</span>
+                  </div>
+                  <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.75rem', flexWrap: 'wrap' }} onClick={(e) => e.preventDefault()}>
+                    <Button to={`/products/${product._id}`} variant="outline" size="sm" style={{ flex: 1 }}>View</Button>
+                    <Button onClick={(e) => { e.preventDefault(); addToCart(product); }} size="sm" style={{ flex: 1 }}>Add to cart</Button>
+                    <Button onClick={(e) => { e.preventDefault(); remove(product._id); }} variant="danger" size="sm">Remove</Button>
+                  </div>
+                </div>
               </div>
-            </div>
-          </article>
-        ))}
-      </div>
+            </Link>
+          ))}
+        </div>
+      )}
     </section>
   );
 }

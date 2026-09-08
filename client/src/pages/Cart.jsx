@@ -1,406 +1,275 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { FaTrash } from 'react-icons/fa';
+import { FaTrash, FaRegHeart } from 'react-icons/fa';
+import Button from '../components/Button';
+
+const FREE_SHIPPING_THRESHOLD = 999;
 
 function Cart({ cart, removeFromCart, updateQuantity, totalPrice }) {
   const [coupon, setCoupon] = useState('');
+  const [saveForLater, setSaveForLater] = useState([]);
 
-  if (!cart.length) {
+  const handleSaveForLater = (item) => {
+    setSaveForLater((prev) => {
+      const exists = prev.find((p) => (p._id || p.id) === (item._id || item.id));
+      if (exists) return prev;
+      return [...prev, { ...item, savedAt: Date.now() }];
+    });
+    removeFromCart(item._id || item.id);
+  };
+
+  const handleMoveToCart = (item) => {
+    setSaveForLater((prev) => prev.filter((p) => (p._id || p.id) !== (item._id || item.id)));
+    const existing = cart.find((i) => (i._id || i.id) === (item._id || item.id));
+    if (!existing) {
+      updateQuantity(item._id || item.id, 1);
+    }
+  };
+
+  const savings = cart.reduce((total, item) => {
+    const discount = ((item.compareAtPrice - item.price) * item.quantity) || 0;
+    return total + discount;
+  }, 0);
+
+  const shippingProgress = useMemo(() => {
+    if (totalPrice >= FREE_SHIPPING_THRESHOLD) return 100;
+    return Math.min(100, Math.round((totalPrice / FREE_SHIPPING_THRESHOLD) * 100));
+  }, [totalPrice]);
+
+  const remainingForFreeShipping = Math.max(0, FREE_SHIPPING_THRESHOLD - totalPrice);
+
+  if (!cart.length && !saveForLater.length) {
     return (
-      <section style={{ padding: '4rem 2rem', textAlign: 'center' }}>
-        <div style={{
-          padding: '3rem 2rem',
-          borderRadius: '12px',
-          background: 'white',
-          border: '1px solid var(--border)'
-        }}>
+      <section className="page-block auth-page">
+        <div className="auth-box text-center">
           <div style={{ fontSize: '4rem', marginBottom: '1rem' }}>🛒</div>
           <h2 style={{ margin: '0 0 0.5rem', color: 'var(--text-primary)' }}>Your cart is empty</h2>
           <p style={{ color: 'var(--text-secondary)', marginBottom: '2rem' }}>
             Looks like you haven't added anything to your cart yet.
           </p>
-          <Link
-            to="/products"
-            style={{
-              display: 'inline-block',
-              padding: '0.85rem 2rem',
-              background: 'var(--primary)',
-              color: 'white',
-              borderRadius: '8px',
-              fontWeight: '600',
-              textDecoration: 'none',
-              transition: 'all 0.3s ease'
-            }}
-          >
-            Continue Shopping
-          </Link>
+          <Button to="/products" size="lg">Continue Shopping</Button>
         </div>
       </section>
     );
   }
 
-  const savings = cart.reduce((total, item) => {
-    const discount = (item.compareAtPrice - item.price) * item.quantity || 0;
-    return total + discount;
-  }, 0);
-
   return (
-    <section style={{
-      display: 'grid',
-      gridTemplateColumns: '1fr 380px',
-      gap: '2rem',
-      padding: '2rem max(1.5rem, calc((100vw - 1400px) / 2))'
-    }}>
+    <section className="cart-page">
       {/* CART ITEMS */}
-      <div>
-        <div style={{
-          padding: '1.5rem',
-          background: 'white',
-          border: '1px solid var(--border)',
-          borderRadius: '12px',
-          marginBottom: '2rem'
-        }}>
-          <h2 style={{ margin: '0 0 1.5rem', fontSize: '1.5rem' }}>
-            Shopping Cart ({cart.length} items)
-          </h2>
+      <div className="cart-items-column">
+        {cart.length > 0 && (
+          <div className="card">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+              <h2 style={{ margin: 0, fontSize: '1.5rem' }}>Shopping Cart ({cart.length} items)</h2>
+            </div>
 
-          <div className="cart-list">
-            {cart.map((item) => (
-              <div
-                className="cart-item"
-                key={item._id || item.id}
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: '100px 1fr auto auto',
-                  gap: '1.5rem',
-                  alignItems: 'start',
-                  padding: '1.5rem',
-                  border: '1px solid var(--border)',
-                  borderRadius: '12px',
-                  marginBottom: '1rem'
-                }}
-              >
-                {/* PRODUCT IMAGE */}
-                <img
-                  src={item.image || 'https://via.placeholder.com/100x100'}
-                  alt={item.name}
-                  style={{
-                    width: '100px',
-                    height: '100px',
-                    objectFit: 'cover',
-                    borderRadius: '8px',
-                    background: 'var(--bg-secondary)'
-                  }}
-                />
-
-                {/* PRODUCT DETAILS */}
-                <div>
-                  <h3 style={{ margin: '0 0 0.5rem', fontSize: '1rem', fontWeight: '600' }}>
-                    {item.name}
-                  </h3>
-                  <p style={{ margin: '0 0 0.75rem', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
-                    {item.brand || 'Premium Select'}
-                  </p>
-                  <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                    <span style={{ fontSize: '1.05rem', fontWeight: '700' }}>
-                      ₹{item.price}
-                    </span>
-                    {item.compareAtPrice && item.compareAtPrice > item.price && (
-                      <>
-                        <span style={{
-                          textDecoration: 'line-through',
-                          color: 'var(--text-tertiary)',
-                          fontSize: '0.9rem'
-                        }}>
-                          ₹{item.compareAtPrice}
-                        </span>
-                        <span style={{
-                          color: 'var(--success)',
-                          fontSize: '0.85rem',
-                          fontWeight: '600'
-                        }}>
-                          Save {Math.round(((item.compareAtPrice - item.price) / item.compareAtPrice) * 100)}%
-                        </span>
-                      </>
-                    )}
-                  </div>
-                </div>
-
-                {/* QUANTITY CONTROLS */}
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.5rem',
-                  border: '1px solid var(--border)',
-                  borderRadius: '8px',
-                  padding: '0.4rem 0.5rem',
-                  background: 'var(--bg-secondary)'
-                }}>
-                  <button
-                    onClick={() => updateQuantity(item._id || item.id, item.quantity - 1)}
-                    style={{
-                      background: 'transparent',
-                      border: 'none',
-                      padding: '0.4rem 0.6rem',
-                      cursor: 'pointer',
-                      fontSize: '1rem',
-                      fontWeight: '700',
-                      color: 'var(--text-secondary)'
-                    }}
-                  >
-                    −
-                  </button>
-                  <span style={{
-                    padding: '0 0.6rem',
-                    fontWeight: '600',
-                    minWidth: '2rem',
-                    textAlign: 'center'
-                  }}>
-                    {item.quantity}
+            {/* FREE SHIPPING PROGRESS */}
+            {remainingForFreeShipping > 0 && (
+              <div className="shipping-progress" style={{ marginBottom: '1.5rem', padding: '1rem', background: 'var(--bg-secondary)', borderRadius: 'var(--radius-md)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                  <span style={{ fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--text-primary)' }}>
+                    🚚 Add ₹{remainingForFreeShipping} more for <strong style={{ color: 'var(--success)' }}>FREE shipping</strong>
                   </span>
-                  <button
-                    onClick={() => updateQuantity(item._id || item.id, item.quantity + 1)}
-                    style={{
-                      background: 'transparent',
-                      border: 'none',
-                      padding: '0.4rem 0.6rem',
-                      cursor: 'pointer',
-                      fontSize: '1rem',
-                      fontWeight: '700',
-                      color: 'var(--text-secondary)'
-                    }}
-                  >
-                    +
-                  </button>
+                  <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-tertiary)', fontWeight: 600 }}>{shippingProgress}%</span>
                 </div>
-
-                {/* SUBTOTAL & DELETE */}
-                <div style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'flex-end',
-                  gap: '0.75rem'
-                }}>
-                  <div style={{ textAlign: 'right' }}>
-                    <p style={{ margin: '0 0 0.25rem', fontSize: '0.85rem', color: 'var(--text-tertiary)' }}>
-                      Subtotal
-                    </p>
-                    <p style={{ margin: 0, fontSize: '1.1rem', fontWeight: '700' }}>
-                      ₹{item.price * item.quantity}
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => removeFromCart(item._id || item.id)}
-                    style={{
-                      background: 'transparent',
-                      color: 'var(--danger)',
-                      border: 'none',
-                      cursor: 'pointer',
-                      fontWeight: '600',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.4rem',
-                      padding: '0.4rem 0.75rem',
-                      borderRadius: '6px',
-                      transition: 'all 0.3s ease'
-                    }}
-                    onMouseEnter={(e) => e.target.style.background = '#ffebee'}
-                    onMouseLeave={(e) => e.target.style.background = 'transparent'}
-                  >
-                    <FaTrash /> Remove
-                  </button>
+                <div className="shipping-progress-bar">
+                  <div className="shipping-progress-fill" style={{ width: `${shippingProgress}%` }} />
                 </div>
+                <p className="shipping-progress-text">
+                  {totalPrice >= FREE_SHIPPING_THRESHOLD
+                    ? '🎉 You qualify for free shipping!'
+                    : `You've earned ₹{totalPrice} — only ₹{remainingForFreeShipping} away from free delivery!`}
+                </p>
               </div>
-            ))}
+            )}
+
+            {totalPrice >= FREE_SHIPPING_THRESHOLD && (
+              <div style={{ padding: '0.75rem 1rem', background: 'var(--success-light)', borderRadius: 'var(--radius-md)', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--success)', fontWeight: 600, fontSize: 'var(--text-sm)' }}>
+                🎉 You've unlocked FREE shipping on this order!
+              </div>
+            )}
+
+            <div className="cart-list">
+              {cart.map((item) => (
+                <div className="cart-item cart-item-grid" key={item._id || item.id}>
+                  {/* PRODUCT IMAGE */}
+                  <Link to={`/products/${item._id || item.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
+                    <img
+                      src={item.image || 'https://via.placeholder.com/100x100'}
+                      alt={item.name}
+                      className="cart-item-image"
+                    />
+                  </Link>
+
+                  {/* PRODUCT DETAILS */}
+                  <div className="cart-item-details">
+                    <Link to={`/products/${item._id || item.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
+                      <h3 style={{ transition: 'color 0.2s ease' }}>{item.name}</h3>
+                    </Link>
+                    <p className="cart-item-brand">{item.brand || 'Premium Select'}</p>
+                    <div className="cart-item-price">
+                      <span className="cart-item-price-current">₹{item.price}</span>
+                      {item.compareAtPrice && item.compareAtPrice > item.price && (
+                        <>
+                          <span className="cart-item-price-original">₹{item.compareAtPrice}</span>
+                          <span className="cart-item-save">
+                            Save {Math.round(((item.compareAtPrice - item.price) / item.compareAtPrice) * 100)}%
+                          </span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* QUANTITY CONTROLS */}
+                  <div className="quantity-control">
+                    <button onClick={() => updateQuantity(item._id || item.id, item.quantity - 1)} aria-label="Decrease quantity">
+                      −
+                    </button>
+                    <span>{item.quantity}</span>
+                    <button onClick={() => updateQuantity(item._id || item.id, item.quantity + 1)} aria-label="Increase quantity">
+                      +
+                    </button>
+                  </div>
+
+                  {/* SUBTOTAL & DELETE */}
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.75rem' }}>
+                    <div className="cart-item-subtotal">
+                      <p className="cart-item-subtotal-label">Subtotal</p>
+                      <p className="cart-item-subtotal-value">₹{item.price * item.quantity}</p>
+                    </div>
+                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                      <button
+                        onClick={() => handleSaveForLater(item)}
+                        style={{ background: 'transparent', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', padding: '0.5rem 0.75rem', cursor: 'pointer', fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', transition: 'all 0.2s ease', display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}
+                        onMouseEnter={(e) => { e.target.style.color = 'var(--primary)'; e.target.style.borderColor = 'var(--primary)'; }}
+                        onMouseLeave={(e) => { e.target.style.color = 'var(--text-secondary)'; e.target.style.borderColor = 'var(--border)'; }}
+                        title="Save for later"
+                      >
+                        <FaRegHeart /> Save
+                      </button>
+                      <button
+                        onClick={() => removeFromCart(item._id || item.id)}
+                        className="btn btn-danger btn-sm"
+                        style={{ display: 'inline-flex' }}
+                      >
+                        <FaTrash /> Remove
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* CONTINUE SHOPPING */}
-        <Link
-          to="/products"
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '0.5rem',
-            color: 'var(--primary)',
-            fontWeight: '600',
-            textDecoration: 'none',
-            transition: 'all 0.3s ease'
-          }}
-          onMouseEnter={(e) => e.target.style.transform = 'translateX(-4px)'}
-          onMouseLeave={(e) => e.target.style.transform = 'translateX(0)'}
-        >
-          ← Continue Shopping
-        </Link>
+        {cart.length > 0 && (
+          <Link to="/products" style={{ marginTop: '1rem', display: 'inline-flex', color: 'var(--primary)', fontWeight: 600, textDecoration: 'none', transition: 'all 0.2s ease' }}>
+            ← Continue Shopping
+          </Link>
+        )}
+
+        {/* SAVE FOR LATER */}
+        {saveForLater.length > 0 && (
+          <div className="save-for-later-section">
+            <h3 className="save-for-later-title">💔 Saved for Later ({saveForLater.length})</h3>
+            <div className="save-for-later-list">
+              {saveForLater.map((item) => (
+                <div className="save-for-later-item" key={item._id || item.id}>
+                  <Link to={`/products/${item._id || item.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
+                    <img src={item.image || 'https://via.placeholder.com/48x48'} alt={item.name} />
+                  </Link>
+                  <div className="save-for-later-item-info">
+                    <Link to={`/products/${item._id || item.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
+                      <h4>{item.name}</h4>
+                    </Link>
+                    <span>₹{item.price}</span>
+                  </div>
+                  <Button size="sm" onClick={() => handleMoveToCart(item)} style={{ flexShrink: 0 }}>
+                    Move to Cart
+                  </Button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ORDER SUMMARY SIDEBAR */}
-      <div style={{
-        height: 'fit-content',
-        position: 'sticky',
-        top: '120px'
-      }}>
-        <div style={{
-          padding: '1.5rem',
-          background: 'white',
-          border: '1px solid var(--border)',
-          borderRadius: '12px',
-          marginBottom: '1rem'
-        }}>
-          <h3 style={{ margin: '0 0 1.5rem', fontSize: '1.1rem', fontWeight: '700' }}>
-            Order Summary
-          </h3>
+      {cart.length > 0 && (
+        <div className="cart-summary-sidebar">
+          <div className="card">
+            <h3 className="cart-summary-title">Order Summary</h3>
 
-          {/* PRICE BREAKDOWN */}
-          <div style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '0.75rem',
-            paddingBottom: '1rem',
-            borderBottom: '1px solid var(--border)',
-            marginBottom: '1rem'
-          }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem' }}>
-              <span>Subtotal</span>
-              <span>₹{totalPrice}</span>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem' }}>
-              <span>Shipping</span>
-              <span style={{ color: 'var(--success)', fontWeight: '600' }}>FREE</span>
-            </div>
-            {savings > 0 && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem' }}>
-                <span>Your Savings</span>
-                <span style={{ color: 'var(--success)', fontWeight: '600' }}>−₹{savings}</span>
+            {/* PRICE BREAKDOWN */}
+            <div className="cart-summary-divider">
+              <div className="cart-summary-row">
+                <span>Subtotal ({cart.length} items)</span>
+                <span>₹{totalPrice}</span>
               </div>
-            )}
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem' }}>
-              <span>Tax</span>
-              <span>₹{Math.round(totalPrice * 0.18)}</span>
+              <div className="cart-summary-row">
+                <span>Shipping</span>
+                <span className="cart-summary-row-savings">
+                  {totalPrice >= FREE_SHIPPING_THRESHOLD ? 'FREE' : `₹${Math.max(0, Math.round(totalPrice * 0.05))}`}
+                </span>
+              </div>
+              {savings > 0 && (
+                <div className="cart-summary-row">
+                  <span>Your Savings</span>
+                  <span className="cart-summary-row-savings">−₹{savings}</span>
+                </div>
+              )}
+              <div className="cart-summary-row">
+                <span>Tax (18%)</span>
+                <span>₹{Math.round(totalPrice * 0.18)}</span>
+              </div>
+            </div>
+
+            {/* TOTAL */}
+            <div className="cart-summary-total-row">
+              <span className="cart-summary-total-label">Total:</span>
+              <span className="cart-summary-total-value">
+                ₹{totalPrice + Math.round(totalPrice * 0.18) + (totalPrice >= FREE_SHIPPING_THRESHOLD ? 0 : Math.max(0, Math.round(totalPrice * 0.05)))}
+              </span>
+            </div>
+
+            {/* COUPON CODE */}
+            <div style={{ marginBottom: '1.5rem' }}>
+              <label className="cart-coupon-label">Coupon Code</label>
+              <div className="cart-coupon-input-group">
+                <input
+                  type="text"
+                  value={coupon}
+                  onChange={(e) => setCoupon(e.target.value)}
+                  placeholder="Enter code"
+                  className="form-input cart-coupon-input"
+                />
+                <Button type="button" variant="secondary" size="sm">Apply</Button>
+              </div>
+            </div>
+
+            {/* CHECKOUT BUTTON */}
+            <Button to="/checkout" size="lg" style={{ width: '100%', marginBottom: '0.75rem' }}>
+              Proceed to Checkout →
+            </Button>
+
+            {/* TRUST BADGES */}
+            <div className="cart-trust-badges">
+              <div>✓ Secure checkout with SSL encryption</div>
+              <div>✓ Money-back guarantee within 30 days</div>
+              <div>✓ Free delivery on orders over ₹999</div>
             </div>
           </div>
 
-          {/* TOTAL */}
-          <div style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginBottom: '1.5rem',
-            paddingBottom: '1.5rem',
-            borderBottom: '2px solid var(--border)'
-          }}>
-            <span style={{ fontSize: '1rem', fontWeight: '700' }}>Total:</span>
-            <span style={{ fontSize: '1.3rem', fontWeight: '700', color: 'var(--primary)' }}>
-              ₹{totalPrice + Math.round(totalPrice * 0.18)}
-            </span>
-          </div>
-
-          {/* COUPON CODE */}
-          <div style={{ marginBottom: '1.5rem' }}>
-            <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.85rem', fontWeight: '600' }}>
-              Coupon Code
-            </label>
-            <div style={{ display: 'flex', gap: '0.5rem' }}>
-              <input
-                type="text"
-                value={coupon}
-                onChange={(e) => setCoupon(e.target.value)}
-                placeholder="Enter code"
-                style={{
-                  flex: 1,
-                  padding: '0.65rem 0.75rem',
-                  border: '1px solid var(--border)',
-                  borderRadius: '8px',
-                  fontSize: '0.9rem'
-                }}
-              />
-              <button
-                style={{
-                  padding: '0.65rem 1rem',
-                  background: 'var(--bg-secondary)',
-                  border: '1px solid var(--border)',
-                  borderRadius: '8px',
-                  cursor: 'pointer',
-                  fontWeight: '600',
-                  fontSize: '0.85rem'
-                }}
-              >
-                Apply
-              </button>
+          {/* DELIVERY INFO */}
+          <div className="card cart-delivery-info">
+            <div className="cart-delivery-title">
+              📦 Estimated delivery
             </div>
-          </div>
-
-          {/* CHECKOUT BUTTON */}
-          <Link
-            to="/checkout"
-            style={{
-              display: 'block',
-              padding: '1rem',
-              background: 'var(--primary)',
-              color: 'white',
-              border: 'none',
-              borderRadius: '8px',
-              textAlign: 'center',
-              textDecoration: 'none',
-              fontWeight: '700',
-              cursor: 'pointer',
-              transition: 'all 0.3s ease',
-              marginBottom: '0.75rem'
-            }}
-            onMouseEnter={(e) => {
-              e.target.style.background = 'var(--primary-dark)';
-              e.target.style.boxShadow = 'var(--shadow-md)';
-              e.target.style.transform = 'translateY(-2px)';
-            }}
-            onMouseLeave={(e) => {
-              e.target.style.background = 'var(--primary)';
-              e.target.style.boxShadow = 'none';
-              e.target.style.transform = 'translateY(0)';
-            }}
-          >
-            Proceed to Checkout →
-          </Link>
-
-          {/* TRUST BADGES */}
-          <div style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '0.75rem',
-            fontSize: '0.8rem',
-            color: 'var(--text-tertiary)',
-            textAlign: 'center',
-            paddingTop: '1rem',
-            borderTop: '1px solid var(--border-light)'
-          }}>
-            <div>✓ Secure checkout with SSL encryption</div>
-            <div>✓ Money-back guarantee within 30 days</div>
-            <div>✓ Free delivery on orders over ₹999</div>
+            <div>4-5 business days</div>
           </div>
         </div>
-
-        {/* DELIVERY INFO */}
-        <div style={{
-          padding: '1rem',
-          background: 'var(--primary-light)',
-          border: '1px solid var(--primary)',
-          borderRadius: '12px',
-          fontSize: '0.85rem',
-          color: 'var(--primary)'
-        }}>
-          <div style={{ fontWeight: '700', marginBottom: '0.5rem' }}>
-            📦 Estimated delivery
-          </div>
-          <div>4-5 business days</div>
-        </div>
-      </div>
-
-      {/* MOBILE RESPONSIVE */}
-      <style>{`
-        @media (max-width: 768px) {
-          section { display: flex; flex-direction: column; gap: 1rem !important; }
-          div[style*="grid-template-columns: 1fr 380px"] { grid-template-columns: 1fr !important; }
-        }
-      `}</style>
+      )}
     </section>
   );
 }

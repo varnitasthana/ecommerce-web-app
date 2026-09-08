@@ -2,7 +2,13 @@ const User = require("../models/User");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const { normaliseEmail, validateRegistration, validateLogin } = require("../validators/authValidator");
-const { safeUser } = require("./userController");
+
+const buildToken = (user) =>
+  jwt.sign(
+    { id: user._id, role: user.role, email: user.email },
+    process.env.JWT_SECRET,
+    { expiresIn: "7d" }
+  );
 
 const registerUser = async (req, res) => {
   try {
@@ -23,12 +29,16 @@ const registerUser = async (req, res) => {
     const user = await User.create({
       name: String(name).trim(),
       email: normalizedEmail,
-      password: hashedPassword
+      password: hashedPassword,
+      emailVerified: false
     });
 
+    const token = buildToken(user);
+
     res.status(201).json({
-      message: "User registered successfully",
-      userId: user._id
+      message: "Account created successfully",
+      token,
+      user: user.getPublicProfile()
     });
   } catch (error) {
     if (error.code === 11000) return res.status(409).json({ message: "An account with this email already exists" });
@@ -44,10 +54,18 @@ const loginUser = async (req, res) => {
 
     if (validationError) return res.status(400).json({ message: validationError });
 
-    const user = await User.findOne({ email: normalizedEmail }).select("+password name email role");
+    const user = await User.findOne({ email: normalizedEmail }).select("+password name email role isActive isDeleted");
 
     if (!user) {
       return res.status(401).json({ message: "Invalid email or password" });
+    }
+
+    if (user.isDeleted) {
+      return res.status(401).json({ message: "Account not found. Please contact support." });
+    }
+
+    if (!user.isActive) {
+      return res.status(401).json({ message: "Account is inactive. Please contact support." });
     }
 
     const isMatch = await bcrypt.compare(password, user.password);
@@ -56,19 +74,16 @@ const loginUser = async (req, res) => {
       return res.status(401).json({ message: "Invalid email or password" });
     }
 
-    const token = jwt.sign(
-      {
-        id: user._id,
-        role: user.role
-      },
-      process.env.JWT_SECRET,
-      { expiresIn: "1d" }
-    );
+    user.lastLogin = new Date();
+    user.loginCount = (user.loginCount || 0) + 1;
+    await user.save();
+
+    const token = buildToken(user);
 
     res.status(200).json({
       message: "Login successful",
       token,
-      user: safeUser(user)
+      user: user.getPublicProfile()
     });
   } catch (error) {
     res.status(500).json({ message: "Unable to sign in" });

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import { BrowserRouter, Link, Navigate, NavLink, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import Home from './pages/Home';
 import Products from './pages/Products';
@@ -8,6 +8,8 @@ import Register from './pages/Register';
 import Cart from './pages/Cart';
 import Checkout from './pages/Checkout';
 import Orders from './pages/Orders';
+import OrderDetail from './pages/OrderDetail';
+import OrderConfirmation from './pages/OrderConfirmation';
 import Admin from './pages/Admin';
 import Wishlist from './pages/Wishlist';
 import Partner from './pages/Partner';
@@ -16,7 +18,17 @@ import Support from './pages/Support';
 import SellerDashboard from './pages/SellerDashboard';
 import { AuthProvider } from './context/AuthContext';
 import { useAuth } from './context/useAuth';
+import ToastContainer from './components/Toast';
+import { addToast } from './components/toastApi';
 import './App.css';
+
+function ScrollToTop() {
+  const { pathname } = useLocation();
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [pathname]);
+  return null;
+}
 
 function ProtectedRoute({ children, adminOnly = false, roles = [] }) {
   const location = useLocation();
@@ -34,21 +46,46 @@ function ProtectedRoute({ children, adminOnly = false, roles = [] }) {
   return children;
 }
 
-function Header({ cart }) {
+function BackToTop() {
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => setVisible(window.scrollY > 400);
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  return (
+    <button
+      className={`back-to-top ${visible ? 'visible' : ''}`}
+      onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+      aria-label="Back to top"
+      title="Back to top"
+    >
+      ↑
+    </button>
+  );
+}
+
+function Header({ cart, darkMode, toggleDarkMode }) {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
   const [search, setSearch] = useState('');
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [suggestions, setSuggestions] = useState([]);
 
   const submitSearch = (event) => {
     event.preventDefault();
     navigate(`/products${search.trim() ? `?search=${encodeURIComponent(search.trim())}` : ''}`);
+    setSuggestions([]);
   };
 
   const handleLogout = () => {
     logout();
     navigate('/');
     setShowProfileMenu(false);
+    setMobileOpen(false);
   };
 
   return (
@@ -59,161 +96,117 @@ function Header({ cart }) {
       </div>
 
       {/* MAIN HEADER */}
-      <header className="topbar">
-        {/* LOGO */}
-        <Link className="brand" to="/">
-          <span className="brand-mark">S</span>
-          ShopEase
-        </Link>
+      <header className="topbar glass-header">
+        <div style={{ maxWidth: 1400, margin: '0 auto', padding: '0.75rem max(1.5rem, calc((100vw - 1400px) / 2))', display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+          {/* LOGO */}
+          <Link className="brand" to="/" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', textDecoration: 'none', color: 'inherit' }}>
+            <span className="brand-mark" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '2.2rem', height: '2.2rem', borderRadius: 'var(--radius-md)', background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)', color: 'white', fontWeight: 700, fontSize: '1.1rem', boxShadow: '0 4px 12px rgba(79, 70, 229, 0.3)' }}>S</span>
+            <span style={{ fontWeight: 700, fontSize: '1.2rem' }}>ShopEase</span>
+          </Link>
 
-        {/* SEARCH BAR */}
-        <form className="global-search" onSubmit={submitSearch}>
-          <input
-            aria-label="Search products"
-            placeholder="Search for products, brands, and more..."
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-          />
-          <button type="submit" aria-label="Search">🔍 Search</button>
-        </form>
+          {/* SEARCH BAR */}
+          <form className="global-search" onSubmit={submitSearch} style={{ flex: 1, maxWidth: 600, position: 'relative', display: 'flex', alignItems: 'center' }}>
+            <input
+              aria-label="Search products"
+              placeholder="Search for products, brands, and more..."
+              value={search}
+              onChange={(event) => {
+                setSearch(event.target.value);
+                if (event.target.value.trim().length >= 2) {
+                  const timer = setTimeout(() => {
+                    fetch(`/api/search/suggestions?q=${encodeURIComponent(event.target.value.trim())}`)
+                      .then((r) => r.json())
+                      .then((data) => setSuggestions(data.suggestions || []))
+                      .catch(() => setSuggestions([]));
+                  }, 300);
+                  return () => clearTimeout(timer);
+                } else {
+                  setSuggestions([]);
+                }
+              }}
+              style={{ width: '100%', padding: '0.7rem 2.5rem 0.7rem 1rem', borderRadius: 'var(--radius-full)', border: '1px solid var(--border)', background: 'var(--bg-secondary)', transition: 'all 0.3s ease', fontSize: '0.95rem' }}
+            />
+            <button type="submit" aria-label="Search" style={{ position: 'absolute', right: '0.4rem', background: 'var(--primary)', color: 'white', border: 'none', borderRadius: 'var(--radius-full)', padding: '0.55rem 1rem', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600, transition: 'all 0.2s ease' }}>🔍</button>
 
-        {/* NAVIGATION */}
-        <nav className="nav">
-          <NavLink to="/products" style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-            🛒 Shop
-          </NavLink>
-          <NavLink to="/wishlist" style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-            ❤️ Wishlist
-          </NavLink>
-          <NavLink to="/orders" style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-            📦 Orders
-          </NavLink>
-          <NavLink
-            to="/cart"
-            style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}
-          >
-            🛍️ Cart
-            {cart.length > 0 && <span className="nav-count">{cart.length}</span>}
-          </NavLink>
-
-          {/* ADMIN LINK */}
-          {user?.role === 'admin' && (
-            <NavLink to="/admin" style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-              ⚙️ Admin
-            </NavLink>
-          )}
-
-          {/* SELLER LINK */}
-          {(user?.role === 'seller' || user?.role === 'admin') && (
-            <NavLink to="/seller" style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-              📊 Seller
-            </NavLink>
-          )}
-
-          {/* USER PROFILE OR LOGIN */}
-          <div style={{ position: 'relative' }}>
-            {user ? (
-              <>
-                <button
-                  className="nav-button"
-                  onClick={() => setShowProfileMenu(!showProfileMenu)}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.3rem',
-                    border: 'none',
-                    background: 'transparent',
-                    cursor: 'pointer',
-                    color: 'inherit'
-                  }}
-                >
-                  👤 {user.name || 'Account'}
-                </button>
-
-                {/* PROFILE DROPDOWN */}
-                {showProfileMenu && (
-                  <div
-                    style={{
-                      position: 'absolute',
-                      top: '100%',
-                      right: 0,
-                      background: 'white',
-                      border: '1px solid var(--border)',
-                      borderRadius: '8px',
-                      boxShadow: 'var(--shadow-lg)',
-                      minWidth: '200px',
-                      zIndex: 50,
-                      marginTop: '0.5rem',
-                      animation: 'slideDown 0.2s ease'
-                    }}
-                  >
-                    <div style={{
-                      padding: '1rem',
-                      borderBottom: '1px solid var(--border)',
-                      fontSize: '0.9rem'
-                    }}>
-                      <p style={{ margin: '0 0 0.25rem', fontWeight: '700' }}>{user.name}</p>
-                      <p style={{ margin: 0, color: 'var(--text-tertiary)', fontSize: '0.85rem' }}>{user.email}</p>
-                    </div>
-                    <div style={{ padding: '0.5rem 0' }}>
-                      <NavLink
-                        to="/orders"
-                        onClick={() => setShowProfileMenu(false)}
-                        style={{
-                          display: 'block',
-                          padding: '0.65rem 1rem',
-                          color: 'var(--text-secondary)',
-                          textDecoration: 'none',
-                          transition: 'all 0.2s ease'
-                        }}
-                        onMouseEnter={(e) => e.target.style.background = 'var(--bg-secondary)'}
-                        onMouseLeave={(e) => e.target.style.background = 'transparent'}
-                      >
-                        📦 My Orders
-                      </NavLink>
-                      <NavLink
-                        to="/wishlist"
-                        onClick={() => setShowProfileMenu(false)}
-                        style={{
-                          display: 'block',
-                          padding: '0.65rem 1rem',
-                          color: 'var(--text-secondary)',
-                          textDecoration: 'none',
-                          transition: 'all 0.2s ease'
-                        }}
-                        onMouseEnter={(e) => e.target.style.background = 'var(--bg-secondary)'}
-                        onMouseLeave={(e) => e.target.style.background = 'transparent'}
-                      >
-                        ❤️ Wishlist
-                      </NavLink>
-                      <button
-                        onClick={handleLogout}
-                        style={{
-                          width: '100%',
-                          textAlign: 'left',
-                          padding: '0.65rem 1rem',
-                          background: 'transparent',
-                          border: 'none',
-                          cursor: 'pointer',
-                          color: 'var(--text-secondary)',
-                          transition: 'all 0.2s ease'
-                        }}
-                        onMouseEnter={(e) => e.target.style.background = 'var(--bg-secondary)'}
-                        onMouseLeave={(e) => e.target.style.background = 'transparent'}
-                      >
-                        🚪 Sign Out
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </>
-            ) : (
-              <NavLink to="/login" style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-                🔐 Sign In
-              </NavLink>
+            {suggestions.length > 0 && (
+              <div className="search-suggestions" style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: '0.5rem', borderRadius: 'var(--radius-md)', overflow: 'hidden', zIndex: 50 }}>
+                {suggestions.map((s) => (
+                  <Link key={s._id} to={`/products/${s._id}`} className="search-suggestion-item" onClick={() => setSuggestions([])}>
+                    <img src={s.image || 'https://via.placeholder.com/48x48'} alt="" />
+                    <span><strong>{s.name}</strong><small>{s.brand} · ₹{s.price}</small></span>
+                  </Link>
+                ))}
+              </div>
             )}
-          </div>
-        </nav>
+          </form>
+
+          {/* THEME TOGGLE */}
+          <button className="theme-toggle" onClick={toggleDarkMode} aria-label="Toggle dark mode" title={darkMode ? 'Light mode' : 'Dark mode'}>
+            {darkMode ? '☀️' : '🌙'}
+          </button>
+
+          {/* MOBILE MENU BUTTON */}
+          <button className="mobile-menu-btn" onClick={() => setMobileOpen(!mobileOpen)} aria-label="Menu">
+            {mobileOpen ? '✕' : '☰'}
+          </button>
+
+          {/* DESKTOP NAVIGATION */}
+          <nav className="nav" style={{ display: window.innerWidth > 768 ? 'flex' : 'none' }}>
+            <NavLink to="/products">🛒 Shop</NavLink>
+            <NavLink to="/wishlist">❤️ Wishlist</NavLink>
+            <NavLink to="/orders">📦 Orders</NavLink>
+            <NavLink to="/cart">🛍️ Cart
+              {cart.length > 0 && <span className="nav-count">{cart.length}</span>}
+            </NavLink>
+
+            {user?.role === 'admin' && (
+              <NavLink to="/admin">⚙️ Admin</NavLink>
+            )}
+
+            {(user?.role === 'seller' || user?.role === 'admin') && (
+              <NavLink to="/seller">📊 Seller</NavLink>
+            )}
+
+            {/* USER PROFILE OR LOGIN */}
+            <div style={{ position: 'relative' }}>
+              {user ? (
+                <>
+                  <button
+                    className="nav-button"
+                    onClick={() => setShowProfileMenu(!showProfileMenu)}
+                  >
+                    👤 {user.name || 'Account'}
+                  </button>
+
+                  {/* PROFILE DROPDOWN */}
+                  {showProfileMenu && (
+                    <div className="profile-dropdown">
+                      <div className="profile-dropdown-header">
+                        <p>{user.name}</p>
+                        <small>{user.email}</small>
+                      </div>
+                      <div className="profile-dropdown-menu">
+                        <NavLink to="/orders" onClick={() => setShowProfileMenu(false)}>
+                          📦 My Orders
+                        </NavLink>
+                        <NavLink to="/wishlist" onClick={() => setShowProfileMenu(false)}>
+                          ❤️ Wishlist
+                        </NavLink>
+                        <button onClick={handleLogout}>
+                          🚪 Sign Out
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <NavLink to="/login">
+                  🔐 Sign In
+                </NavLink>
+              )}
+            </div>
+          </nav>
+        </div>
       </header>
 
       {/* CATEGORY BAR */}
@@ -223,20 +216,80 @@ function Header({ cart }) {
         <NavLink to="/products?category=Fashion">👕 Fashion</NavLink>
         <NavLink to="/products?category=Home%20%26%20Kitchen">🏡 Home & Living</NavLink>
         <NavLink to="/products?category=Sports%20%26%20Fitness">⚽ Sports</NavLink>
-        <NavLink to="/partner" style={{ marginLeft: 'auto', color: 'var(--primary)', fontWeight: '600' }}>
+        <Link to="/partner" style={{ marginLeft: 'auto', color: 'var(--primary)', fontWeight: '600', textDecoration: 'none' }}>
           📈 Sell with Us
-        </NavLink>
+        </Link>
       </div>
+
+      {/* MOBILE NAVIGATION */}
+      {mobileOpen && (
+        <div className="mobile-nav-overlay" onClick={() => setMobileOpen(false)}>
+          <div className="mobile-nav-panel" onClick={(e) => e.stopPropagation()}>
+            <div className="mobile-nav-close">
+              <button onClick={() => setMobileOpen(false)} style={{ background: 'transparent', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: 'var(--text-secondary)' }}>✕</button>
+            </div>
+            <div className="mobile-nav-links">
+              <Link to="/products" onClick={() => setMobileOpen(false)}>🛒 Shop</Link>
+              <Link to="/wishlist" onClick={() => setMobileOpen(false)}>❤️ Wishlist</Link>
+              <Link to="/orders" onClick={() => setMobileOpen(false)}>📦 Orders</Link>
+              <Link to="/cart" onClick={() => setMobileOpen(false)}>🛍️ Cart {cart.length > 0 && `(${cart.length})`}</Link>
+              {user?.role === 'admin' && (
+                <Link to="/admin" onClick={() => setMobileOpen(false)}>⚙️ Admin</Link>
+              )}
+              {(user?.role === 'seller' || user?.role === 'admin') && (
+                <Link to="/seller" onClick={() => setMobileOpen(false)}>📊 Seller</Link>
+              )}
+              {user ? (
+                <>
+                  <div style={{ padding: '0.85rem 1rem', borderBottom: '1px solid var(--border)', margin: '0.5rem 0' }}>
+                    <p style={{ margin: 0, fontWeight: 700, color: 'var(--text-primary)' }}>{user.name}</p>
+                    <small style={{ color: 'var(--text-tertiary)' }}>{user.email}</small>
+                  </div>
+                  <button onClick={handleLogout} style={{ background: 'transparent', border: 'none', cursor: 'pointer' }}>🚪 Sign Out</button>
+                </>
+              ) : (
+                <Link to="/login" onClick={() => setMobileOpen(false)}>🔐 Sign In</Link>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
 
 function App() {
-  const [cart, setCart] = useState(() => JSON.parse(localStorage.getItem('cart') || '[]'));
+  const [cart, setCart] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('cart') || '[]');
+    } catch {
+      return [];
+    }
+  });
+  const [darkMode, setDarkMode] = useState(() => {
+    try {
+      return localStorage.getItem('darkMode') === 'true';
+    } catch {
+      return false;
+    }
+  });
 
   useEffect(() => {
     localStorage.setItem('cart', JSON.stringify(cart));
   }, [cart]);
+
+  useEffect(() => {
+    localStorage.setItem('darkMode', String(darkMode));
+    if (darkMode) {
+      document.body.classList.add('dark');
+    } else {
+      document.body.classList.remove('dark');
+    }
+  }, [darkMode]);
+
+  const toggleDarkMode = useCallback(() => {
+    setDarkMode((prev) => !prev);
+  }, []);
 
   const addToCart = (product, quantity = 1) => {
     setCart((prev) => {
@@ -252,6 +305,7 @@ function App() {
 
       return [...prev, { ...product, quantity }];
     });
+    addToast(`${product.name} added to cart`, 'success');
   };
 
   const removeFromCart = (id) => {
@@ -269,7 +323,7 @@ function App() {
     );
   };
 
-  const clearCart = () => setCart([]);
+  const clearCart = useCallback(() => setCart([]), []);
 
   const totalPrice = useMemo(
     () => cart.reduce((sum, item) => sum + item.price * item.quantity, 0),
@@ -280,7 +334,8 @@ function App() {
     <BrowserRouter>
       <AuthProvider>
       <div className="app-shell">
-        <Header cart={cart} />
+        <ScrollToTop />
+        <Header cart={cart} darkMode={darkMode} toggleDarkMode={toggleDarkMode} />
 
         <main>
           <Routes>
@@ -302,6 +357,8 @@ function App() {
               }
             />
             <Route path="/orders" element={<ProtectedRoute><Orders clearCart={clearCart} /></ProtectedRoute>} />
+            <Route path="/orders/:id" element={<ProtectedRoute><OrderDetail /></ProtectedRoute>} />
+            <Route path="/order-confirmation" element={<ProtectedRoute><OrderConfirmation /></ProtectedRoute>} />
             <Route path="/wishlist" element={<ProtectedRoute><Wishlist addToCart={addToCart} /></ProtectedRoute>} />
             <Route path="/partner" element={<Partner />} />
             <Route path="/seller" element={<ProtectedRoute roles={['seller', 'admin']}><SellerDashboard /></ProtectedRoute>} />
@@ -317,15 +374,15 @@ function App() {
         <footer className="footer">
           <div className="footer-grid">
             <div>
-              <Link className="footer-brand" to="/">
+              <Link className="footer-brand" to="/" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', textDecoration: 'none', color: 'inherit', marginBottom: '0.5rem' }}>
                 <span style={{ color: 'var(--primary)', fontSize: '1.3rem' }}>S</span>
-                ShopEase
+                <span style={{ fontWeight: 700, fontSize: '1.1rem' }}>ShopEase</span>
               </Link>
-              <p>Your trusted online marketplace for quality products and amazing deals. Shop with confidence!</p>
-              <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.75rem' }}>
-                <a href="#" style={{ width: '30px', height: '30px', background: 'var(--primary-light)', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)' }}>f</a>
-                <a href="#" style={{ width: '30px', height: '30px', background: 'var(--primary-light)', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)' }}>𝕏</a>
-                <a href="#" style={{ width: '30px', height: '30px', background: 'var(--primary-light)', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)' }}>📷</a>
+              <p style={{ color: '#aaa', fontSize: '0.95rem' }}>Your trusted online marketplace for quality products and amazing deals. Shop with confidence!</p>
+              <div className="social-icons">
+                <a href="#" className="social-icon">f</a>
+                <a href="#" className="social-icon">𝕏</a>
+                <a href="#" className="social-icon">📷</a>
               </div>
             </div>
             <div>
@@ -341,43 +398,34 @@ function App() {
               <Link to="/support">Customer Support</Link>
               <Link to="/returns">Returns Policy</Link>
               <Link to="/orders">Track Order</Link>
-              <a href="#" style={{ display: 'block', color: '#bbb', textDecoration: 'none', transition: 'color 0.3s' }} onMouseEnter={(e) => e.target.style.color = 'var(--primary)'} onMouseLeave={(e) => e.target.style.color = '#bbb'}>FAQs</a>
-              <a href="#" style={{ display: 'block', color: '#bbb', textDecoration: 'none', transition: 'color 0.3s' }} onMouseEnter={(e) => e.target.style.color = 'var(--primary)'} onMouseLeave={(e) => e.target.style.color = '#bbb'}>Contact Us</a>
+              <Link to="/support" className="footer-link">FAQs</Link>
+              <Link to="/support" className="footer-link">Contact Us</Link>
             </div>
             <div>
               <strong>📋 Policies</strong>
               <Link to="/privacy">Privacy Policy</Link>
               <Link to="/terms">Terms & Conditions</Link>
-              <a href="#" style={{ display: 'block', color: '#bbb', textDecoration: 'none', transition: 'color 0.3s' }} onMouseEnter={(e) => e.target.style.color = 'var(--primary)'} onMouseLeave={(e) => e.target.style.color = '#bbb'}>Secure Checkout</a>
-              <a href="#" style={{ display: 'block', color: '#bbb', textDecoration: 'none', transition: 'color 0.3s' }} onMouseEnter={(e) => e.target.style.color = 'var(--primary)'} onMouseLeave={(e) => e.target.style.color = '#bbb'}>Security & Trust</a>
+              <Link to="/privacy" className="footer-link">Secure Checkout</Link>
+              <Link to="/terms" className="footer-link">Security & Trust</Link>
             </div>
           </div>
 
           {/* FOOTER BOTTOM */}
-          <div style={{
-            padding: '1.5rem max(1.5rem, calc((100vw - 1400px) / 2))',
-            borderTop: '1px solid #333',
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
-            gap: '2rem',
-            textAlign: 'center',
-            fontSize: '0.85rem',
-            color: '#999'
-          }}>
+          <div className="footer-bottom-grid">
             <div>
-              <div style={{ fontWeight: '700', marginBottom: '0.5rem', color: '#ccc' }}>✓ Verified Sellers</div>
+              <div className="footer-bottom-item-title">✓ Verified Sellers</div>
               <div>100% authentic products from trusted brands</div>
             </div>
             <div>
-              <div style={{ fontWeight: '700', marginBottom: '0.5rem', color: '#ccc' }}>🔒 Secure Payments</div>
+              <div className="footer-bottom-item-title">🔒 Secure Payments</div>
               <div>SSL encrypted & protected transactions</div>
             </div>
             <div>
-              <div style={{ fontWeight: '700', marginBottom: '0.5rem', color: '#ccc' }}>🚚 Fast Delivery</div>
+              <div className="footer-bottom-item-title">🚚 Fast Delivery</div>
               <div>4-5 business days with free shipping</div>
             </div>
             <div>
-              <div style={{ fontWeight: '700', marginBottom: '0.5rem', color: '#ccc' }}>↩️ Easy Returns</div>
+              <div className="footer-bottom-item-title">↩️ Easy Returns</div>
               <div>30-day money-back guarantee</div>
             </div>
           </div>
@@ -388,6 +436,9 @@ function App() {
             </div>
           </div>
         </footer>
+
+        <ToastContainer />
+        <BackToTop />
       </div>
       </AuthProvider>
     </BrowserRouter>

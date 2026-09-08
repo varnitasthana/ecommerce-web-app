@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { FaFilter, FaSearch } from 'react-icons/fa';
+import { FaFilter, FaSearch, FaShoppingCart } from 'react-icons/fa';
 import api from '../services/api';
+import Button from '../components/Button';
 
 function Products({ addToCart }) {
   const [products, setProducts] = useState([]);
@@ -19,6 +20,7 @@ function Products({ addToCart }) {
   const [suggestions, setSuggestions] = useState([]);
   const [searchParams] = useSearchParams();
   const searchParamsString = searchParams.toString();
+  const [quickViewProduct, setQuickViewProduct] = useState(null);
 
   useEffect(() => {
     const nextParams = new URLSearchParams(searchParamsString);
@@ -54,7 +56,7 @@ function Products({ addToCart }) {
   useEffect(() => {
     if (search.trim().length < 2) {
       setSuggestions([]);
-      return undefined;
+      return;
     }
     const timer = window.setTimeout(() => {
       api.get('/search/suggestions', { params: { q: search.trim() } })
@@ -81,7 +83,6 @@ function Products({ addToCart }) {
 
   const activeFiltersCount = [search, category !== 'all', brand !== 'all', minPrice, maxPrice, minRating, availability !== 'all'].filter(Boolean).length;
 
-  // Get badge for product
   const getProductBadge = (product, index) => {
     if (product.discount && product.discount > 20) return { text: `${product.discount}% OFF`, class: 'badge-sale' };
     if (index % 4 === 0) return { text: 'POPULAR', class: 'badge-hot' };
@@ -89,56 +90,36 @@ function Products({ addToCart }) {
     return null;
   };
 
+  const openQuickView = (product) => {
+    setQuickViewProduct(product);
+    document.body.style.overflow = 'hidden';
+  };
+
+  const closeQuickView = () => {
+    setQuickViewProduct(null);
+    document.body.style.overflow = '';
+  };
+
   return (
-    <section className="products-page" style={{ display: 'grid', gridTemplateColumns: filterOpen ? '280px 1fr' : '1fr', gap: '2rem', padding: '2rem max(1.5rem, calc((100vw - 1400px) / 2))' }}>
+    <section className="products-page">
       {/* FILTERS SIDEBAR */}
-      <div className="products-filter-panel" style={{
-        display: filterOpen ? 'flex' : 'none',
-        flexDirection: 'column',
-        gap: '1.5rem',
-        padding: '1.5rem',
-        background: 'white',
-        border: '1px solid var(--border)',
-        borderRadius: '12px',
-        height: 'fit-content',
-        position: 'sticky',
-        top: '120px'
-      }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: '700' }}>Filters</h3>
+      <div className={`products-filter-panel filters-sidebar ${filterOpen ? '' : 'hidden'}`} style={{ display: filterOpen ? 'flex' : 'none' }}>
+        <div className="products-filter-header">
+          <h3 className="products-filter-title">Filters</h3>
           {activeFiltersCount > 0 && (
-            <button
-              className="filter-toggle-button"
-              onClick={clearFilters}
-              style={{
-                background: 'transparent',
-                color: 'var(--primary)',
-                fontSize: '0.85rem',
-                fontWeight: '600',
-                cursor: 'pointer',
-                padding: '0.4rem 0.8rem',
-                border: '1px solid var(--border)',
-                borderRadius: '6px'
-              }}
-            >
+            <button className="filter-toggle-button" onClick={clearFilters}>
               Clear all
             </button>
           )}
         </div>
 
         {/* CATEGORY FILTER */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', borderBottom: '1px solid var(--border-light)', paddingBottom: '1rem' }}>
-          <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: '700' }}>Category</h4>
+        <div className="filter-group">
+          <h4>Category</h4>
           <select
             value={category}
             onChange={(e) => { setCategory(e.target.value); setPageFromUrl(1); }}
-            style={{
-              padding: '0.65rem 0.75rem',
-              border: '1px solid var(--border)',
-              borderRadius: '8px',
-              background: 'white',
-              cursor: 'pointer'
-            }}
+            className="form-select"
           >
             <option value="all">All categories</option>
             {categories.map((item) => <option key={item} value={item}>{item}</option>)}
@@ -146,18 +127,12 @@ function Products({ addToCart }) {
         </div>
 
         {/* BRAND FILTER */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', borderBottom: '1px solid var(--border-light)', paddingBottom: '1rem' }}>
-          <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: '700' }}>Brand</h4>
+        <div className="filter-group">
+          <h4>Brand</h4>
           <select
             value={brand}
             onChange={(e) => { setBrand(e.target.value); setPageFromUrl(1); }}
-            style={{
-              padding: '0.65rem 0.75rem',
-              border: '1px solid var(--border)',
-              borderRadius: '8px',
-              background: 'white',
-              cursor: 'pointer'
-            }}
+            className="form-select"
           >
             <option value="all">All brands</option>
             {brands.map((item) => <option key={item} value={item}>{item}</option>)}
@@ -165,8 +140,8 @@ function Products({ addToCart }) {
         </div>
 
         {/* PRICE FILTER */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem', borderBottom: '1px solid var(--border-light)', paddingBottom: '1rem' }}>
-          <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: '700' }}>Price Range</h4>
+        <div className="filter-group">
+          <h4>Price Range</h4>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.6rem' }}>
             <input
               type="number"
@@ -174,12 +149,7 @@ function Products({ addToCart }) {
               placeholder="Min price"
               value={minPrice}
               onChange={(e) => { setMinPrice(e.target.value); setPageFromUrl(1); }}
-              style={{
-                padding: '0.65rem 0.75rem',
-                border: '1px solid var(--border)',
-                borderRadius: '8px',
-                background: 'white'
-              }}
+              className="form-input"
             />
             <input
               type="number"
@@ -187,29 +157,18 @@ function Products({ addToCart }) {
               placeholder="Max price"
               value={maxPrice}
               onChange={(e) => { setMaxPrice(e.target.value); setPageFromUrl(1); }}
-              style={{
-                padding: '0.65rem 0.75rem',
-                border: '1px solid var(--border)',
-                borderRadius: '8px',
-                background: 'white'
-              }}
+              className="form-input"
             />
           </div>
         </div>
 
         {/* RATING FILTER */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', borderBottom: '1px solid var(--border-light)', paddingBottom: '1rem' }}>
-          <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: '700' }}>Rating</h4>
+        <div className="filter-group">
+          <h4>Rating</h4>
           <select
             value={minRating}
             onChange={(e) => { setMinRating(e.target.value); setPageFromUrl(1); }}
-            style={{
-              padding: '0.65rem 0.75rem',
-              border: '1px solid var(--border)',
-              borderRadius: '8px',
-              background: 'white',
-              cursor: 'pointer'
-            }}
+            className="form-select"
           >
             <option value="">All ratings</option>
             <option value="4">⭐⭐⭐⭐+ (4 & up)</option>
@@ -220,18 +179,12 @@ function Products({ addToCart }) {
         </div>
 
         {/* AVAILABILITY FILTER */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
-          <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: '700' }}>Availability</h4>
+        <div className="filter-group">
+          <h4>Availability</h4>
           <select
             value={availability}
             onChange={(e) => { setAvailability(e.target.value); setPageFromUrl(1); }}
-            style={{
-              padding: '0.65rem 0.75rem',
-              border: '1px solid var(--border)',
-              borderRadius: '8px',
-              background: 'white',
-              cursor: 'pointer'
-            }}
+            className="form-select"
           >
             <option value="all">All products</option>
             <option value="in-stock">In stock</option>
@@ -243,107 +196,55 @@ function Products({ addToCart }) {
       {/* MAIN CONTENT */}
       <div>
         {/* HEADER WITH SEARCH & SORT */}
-        <div className="catalog-search-shell" style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          gap: '1.5rem',
-          marginBottom: '2rem',
-          flexWrap: 'wrap'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <button
-              onClick={() => setFilterOpen(!filterOpen)}
-              style={{
-                background: 'white',
-                border: '1px solid var(--border)',
-                padding: '0.65rem 1rem',
-                borderRadius: '8px',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem',
-                fontWeight: '600',
-                color: 'var(--primary)'
-              }}
-            >
+        <div className="products-catalog-controls">
+          <div className="products-catalog-left">
+            <Button onClick={() => setFilterOpen(!filterOpen)} variant="outline" size="sm">
               <FaFilter /> Filters {activeFiltersCount > 0 && `(${activeFiltersCount})`}
-            </button>
-            <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+            </Button>
+            <span className="muted">
               {pagination.total || 0} products found
             </span>
           </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <select
-              value={sort}
-              onChange={(e) => setSort(e.target.value)}
-              style={{
-                padding: '0.65rem 1rem',
-                border: '1px solid var(--border)',
-                borderRadius: '8px',
-                background: 'white',
-                cursor: 'pointer',
-                fontWeight: '500'
-              }}
-            >
-              <option value="featured">Featured</option>
-              <option value="price-low">Price: Low to High</option>
-              <option value="price-high">Price: High to Low</option>
-              <option value="newest">Newest</option>
-              <option value="rating">Best Rated</option>
-            </select>
-          </div>
+          <select
+            value={sort}
+            onChange={(e) => setSort(e.target.value)}
+            className="form-select products-sort-select"
+          >
+            <option value="featured">Featured</option>
+            <option value="price-low">Price: Low to High</option>
+            <option value="price-high">Price: High to Low</option>
+            <option value="newest">Newest</option>
+            <option value="rating">Best Rated</option>
+          </select>
         </div>
 
-        {/* SEARCH BAR ON PRODUCTS PAGE */}
-        <div style={{
-          display: 'flex',
-          gap: '0.75rem',
-          marginBottom: '2rem',
-          background: 'white',
-          padding: '1rem',
-          borderRadius: '12px',
-          border: '1px solid var(--border)'
-        }}>
-          <div style={{ flex: 1, display: 'flex', alignItems: 'center' }}>
-            <FaSearch style={{ marginRight: '0.75rem', color: 'var(--text-tertiary)' }} />
+        {/* SEARCH BAR */}
+        <div className="card products-search-bar">
+          <div style={{ flex: 1, display: 'flex', alignItems: 'center', position: 'relative' }}>
+            <FaSearch className="products-search-icon" />
             <input
               type="search"
               placeholder="Search in products..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              style={{
-                flex: 1,
-                border: 'none',
-                background: 'transparent',
-                outline: 'none',
-                fontSize: '0.95rem'
-              }}
+              className="products-search-input"
             />
+            {suggestions.length > 0 && (
+              <div className="catalog-suggestions" style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: '0.5rem', borderRadius: 'var(--radius-md)', overflow: 'hidden', zIndex: 50 }}>
+                {suggestions.map((suggestion) => (
+                  <Link key={suggestion._id} to={`/products/${suggestion._id}`} onClick={() => setSuggestions([])} className="catalog-suggestion">
+                    <img src={suggestion.image || 'https://via.placeholder.com/48x48'} alt="" />
+                    <span><strong>{suggestion.name}</strong><small>{suggestion.brand} · ₹{suggestion.price}</small></span>
+                  </Link>
+                ))}
+              </div>
+            )}
           </div>
-          {suggestions.length > 0 && (
-            <div className="catalog-suggestions">
-              {suggestions.map((suggestion) => (
-                <Link key={suggestion._id} to={`/products/${suggestion._id}`} onClick={() => setSuggestions([])} className="catalog-suggestion">
-                  <img src={suggestion.image || 'https://via.placeholder.com/48x48'} alt="" />
-                  <span><strong>{suggestion.name}</strong><small>{suggestion.brand} · ₹{suggestion.price}</small></span>
-                </Link>
-              ))}
-            </div>
-          )}
         </div>
 
         {/* ERROR MESSAGE */}
         {error && (
-          <div style={{
-            padding: '1rem',
-            marginBottom: '1.5rem',
-            background: '#ffebee',
-            color: 'var(--danger)',
-            borderRadius: '8px',
-            border: '1px solid #ffcdd2'
-          }}>
+          <div className="alert alert-error" style={{ marginBottom: '1.5rem' }}>
             {error}
           </div>
         )}
@@ -351,124 +252,145 @@ function Products({ addToCart }) {
         {/* PRODUCT GRID */}
         {products.length > 0 ? (
           <div className="product-grid">
-            {products.map((product, idx) => (
-              <div className="product-card" key={product._id || product.id}>
-                <div className="product-card-image">
-                  <img src={product.image || 'https://via.placeholder.com/240x240'} alt={product.name} />
-                  {getProductBadge(product, idx) && (
-                    <div className={`product-badge ${getProductBadge(product, idx).class}`}>
-                      {getProductBadge(product, idx).text}
-                    </div>
-                  )}
-                </div>
-                <div className="product-card-body">
-                  <p>{product.brand || 'Premium Select'}</p>
-                  <h3>{product.name}</h3>
-                  
-                  <div className="product-rating">
-                    <span className="rating-stars">★★★★★</span>
-                    <span className="rating-count">{product.rating ? Math.round(product.rating * 10) / 10 : '4.5'}</span>
-                  </div>
-
-                  <div className="product-meta">
-                    <div className="product-price">
-                      <span className="product-price-current">₹{product.price}</span>
-                      {product.compareAtPrice && product.compareAtPrice > product.price && (
-                        <>
-                          <span className="product-price-original">₹{product.compareAtPrice}</span>
-                          <span className="product-discount">{Math.round(((product.compareAtPrice - product.price) / product.compareAtPrice) * 100)}% off</span>
-                        </>
-                      )}
-                    </div>
-                    <button onClick={() => addToCart(product, 1)} style={{ fontSize: '0.85rem' }}>
-                      Add to Cart
+            {products.map((product, idx) => {
+              const badge = getProductBadge(product, idx);
+              const productId = product._id || product.id;
+              return (
+                <div className="product-card" key={productId}>
+                  <div className="product-card-image">
+                    <Link to={`/products/${productId}`} style={{ textDecoration: 'none', color: 'inherit' }}>
+                      <img src={product.image || 'https://via.placeholder.com/240x240'} alt={product.name} loading="lazy" />
+                    </Link>
+                    {badge && <div className={`product-badge ${badge.class}`}>{badge.text}</div>}
+                    <button
+                      className="quick-view-btn"
+                      onClick={() => openQuickView(product)}
+                      aria-label="Quick view"
+                    >
+                      👁 Quick View
                     </button>
                   </div>
-                  
-                  <Link
-                    to={`/products/${product._id}`}
-                    style={{
-                      display: 'inline-block',
-                      marginTop: '0.75rem',
-                      fontSize: '0.9rem',
-                      color: 'var(--primary)',
-                      fontWeight: '600',
-                      transition: 'all 0.3s ease'
-                    }}
-                  >
-                    View Details →
-                  </Link>
+                  <div className="product-card-body">
+                    <p>{product.brand || 'Premium Select'}</p>
+                    <Link to={`/products/${productId}`} style={{ textDecoration: 'none', color: 'inherit' }}>
+                      <h3>{product.name}</h3>
+                    </Link>
+                    <div className="product-rating">
+                      <span className="rating-stars">★★★★★</span>
+                      <span className="rating-count">{product.rating ? Math.round(product.rating * 10) / 10 : '4.5'}</span>
+                    </div>
+                    <div className="product-meta">
+                      <div className="product-price">
+                        <span className="product-price-current">₹{product.price}</span>
+                        {product.compareAtPrice && product.compareAtPrice > product.price && (
+                          <>
+                            <span className="product-price-original">₹{product.compareAtPrice}</span>
+                            <span className="product-discount">{Math.round(((product.compareAtPrice - product.price) / product.compareAtPrice) * 100)}% off</span>
+                          </>
+                        )}
+                      </div>
+                      <button onClick={(e) => { e.preventDefault(); addToCart(product, 1); }} className="product-card-add-btn">
+                        <FaShoppingCart /> Add to Cart
+                      </button>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         ) : (
           <div className="empty-state">
             <h3 style={{ fontSize: '1.2rem', color: 'var(--text-primary)' }}>No products found</h3>
             <p>Try adjusting your filters or search terms</p>
-            <button
-              onClick={clearFilters}
-              style={{
-                marginTop: '1rem',
-                padding: '0.75rem 1.5rem',
-                background: 'var(--primary)',
-                color: 'white',
-                border: 'none',
-                borderRadius: '8px',
-                cursor: 'pointer',
-                fontWeight: '600'
-              }}
-            >
-              Clear Filters
-            </button>
+            <Button onClick={clearFilters} style={{ marginTop: '1rem' }}>Clear Filters</Button>
           </div>
         )}
 
         {/* PAGINATION */}
         {pagination.totalPages > 1 && (
           <div className="pagination-controls">
-            <button
+            <Button
               onClick={() => setPageFromUrl(page - 1)}
               disabled={page === 1}
-              style={{
-                opacity: page === 1 ? 0.5 : 1,
-                cursor: page === 1 ? 'not-allowed' : 'pointer'
-              }}
+              variant="outline"
             >
               ← Previous
-            </button>
-            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+            </Button>
+            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'center' }}>
               {Array.from({ length: pagination.totalPages }, (_, i) => i + 1).map((p) => (
                 <button
                   key={p}
                   onClick={() => setPageFromUrl(p)}
-                  style={{
-                    padding: '0.5rem 0.75rem',
-                    background: p === page ? 'var(--primary)' : 'white',
-                    color: p === page ? 'white' : 'var(--text-secondary)',
-                    border: '1px solid var(--border)',
-                    borderRadius: '6px',
-                    cursor: 'pointer',
-                    fontWeight: p === page ? '700' : '500'
-                  }}
+                  className={p === page ? 'active' : ''}
+                  aria-label={`Page ${p}`}
+                  aria-current={p === page ? 'page' : undefined}
                 >
                   {p}
                 </button>
               ))}
             </div>
-            <button
+            <Button
               onClick={() => setPageFromUrl(page + 1)}
               disabled={page === pagination.totalPages}
-              style={{
-                opacity: page === pagination.totalPages ? 0.5 : 1,
-                cursor: page === pagination.totalPages ? 'not-allowed' : 'pointer'
-              }}
+              variant="outline"
             >
               Next →
-            </button>
+            </Button>
           </div>
         )}
       </div>
+
+      {/* QUICK VIEW MODAL */}
+      {quickViewProduct && (
+        <div className="modal-overlay" onClick={closeQuickView}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ position: 'relative' }}>
+            <button className="modal-close" onClick={closeQuickView}>✕</button>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', padding: '2rem' }}>
+              <div>
+                <div className="product-image-wrapper" style={{ marginBottom: '1rem' }}>
+                  <img src={quickViewProduct.image || 'https://via.placeholder.com/500x500'} alt={quickViewProduct.name} />
+                </div>
+                <div className="product-trust-grid">
+                  {[['✓', 'Verified'], ['🔒', 'Secure'], ['✓', 'Authentic']].map(([icon, label]) => (
+                    <div key={label} className="product-trust-item">
+                      <div className="product-trust-icon">{icon}</div>
+                      {label}
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <p className="product-brand-category">{quickViewProduct.brand || 'Premium Select'} · {quickViewProduct.category}</p>
+                <h1 className="product-name" style={{ fontSize: '1.5rem' }}>{quickViewProduct.name}</h1>
+                <div className="product-rating-row" style={{ border: 'none', padding: 0, margin: '0.75rem 0' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <span className="product-rating-stars">★★★★★</span>
+                    <span className="product-rating-value">{quickViewProduct.rating ? Math.round(quickViewProduct.rating * 10) / 10 : '4.5'}</span>
+                  </div>
+                </div>
+                <div className="product-price-row" style={{ marginBottom: '1rem' }}>
+                  <span className="product-price-current-lg" style={{ fontSize: '1.5rem' }}>₹{quickViewProduct.price}</span>
+                  {quickViewProduct.compareAtPrice && (
+                    <>
+                      <span className="product-price-original-lg">₹{quickViewProduct.compareAtPrice}</span>
+                      <span className="product-price-save-badge">Save ₹{quickViewProduct.compareAtPrice - quickViewProduct.price}</span>
+                    </>
+                  )}
+                </div>
+                <p className="product-stock-status">✓ {quickViewProduct.stock > 0 ? 'In Stock' : 'Out of Stock'}</p>
+                <div className="product-action-row" style={{ marginTop: '1rem' }}>
+                  <Button onClick={() => { addToCart(quickViewProduct, 1); closeQuickView(); }} size="lg" style={{ flex: 1 }}>
+                    <FaShoppingCart /> Add to Cart
+                  </Button>
+                  <Link to={`/products/${quickViewProduct._id || quickViewProduct.id}`} style={{ textDecoration: 'none' }}>
+                    <Button variant="outline" size="lg">View Details</Button>
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   );
 }

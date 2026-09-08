@@ -270,4 +270,65 @@ const handleStripeWebhook = async (req, res) => {
   }
 };
 
-module.exports = { createCheckoutSession, handleStripeWebhook };
+const getCheckoutSession = async (req, res) => {
+  try {
+    const { session_id } = req.query;
+    if (!session_id) return res.status(400).json({ message: "session_id is required" });
+
+    const stripe = getStripe();
+    const session = await stripe.checkout.sessions.retrieve(session_id);
+    const orderId = session.metadata?.orderId;
+
+    if (!orderId) return res.status(404).json({ message: "Order not found for this session" });
+
+    res.status(200).json({ orderId, session });
+  } catch (error) {
+    res.status(500).json({ message: "Unable to retrieve checkout session" });
+  }
+};
+
+const createDemoCheckoutSession = async (req, res) => {
+  try {
+    const { items, shippingAddress, paymentMethod = "demo" } = req.body;
+
+    if (!Array.isArray(items) || items.length === 0 || !shippingAddress?.name || !shippingAddress?.street || !shippingAddress?.city || !shippingAddress?.postalCode || !shippingAddress?.country) {
+      return res.status(400).json({ message: "Items and complete shipping address are required" });
+    }
+
+    const requestedItems = normaliseItems(items);
+    const validatedItems = await validateProductsAndPrices(requestedItems);
+
+    const orderItems = validatedItems.map((item) => ({
+      product: item.productId,
+      name: item.name,
+      price: item.price,
+      quantity: item.quantity,
+      sku: item.sku
+    }));
+
+    const subtotal = orderItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+    const shipping = subtotal > 999 ? 0 : 49;
+    const tax = Math.round(subtotal * 0.18);
+    const total = subtotal + shipping + tax;
+
+    const order = await Order.create({
+      user: req.user.id,
+      items: orderItems,
+      shippingAddress,
+      subtotal,
+      shippingCost: shipping,
+      taxAmount: tax,
+      total,
+      status: "confirmed",
+      paymentStatus: "paid",
+      paymentMethod: paymentMethod,
+      stockReserved: false
+    });
+
+    res.status(201).json({ orderId: order._id, demo: true, paymentMethod });
+  } catch (error) {
+    res.status(error.statusCode || 400).json({ message: error.message });
+  }
+};
+
+module.exports = { createCheckoutSession, handleStripeWebhook, getCheckoutSession, createDemoCheckoutSession };

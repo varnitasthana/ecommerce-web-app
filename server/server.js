@@ -55,12 +55,43 @@ app.use("/api/admin", adminRoutes);
 
 app.get("/", (req, res) => {
   res.json({
-    message: "E-Commerce API is running"
+    message: "E-Commerce API is running",
+    version: "1.0.0",
+    environment: process.env.NODE_ENV || "development"
   });
 });
 
-app.get("/api/health", (req, res) => {
-  res.status(200).json({ status: "ok", service: "ecommerce-api", integrations: integrationStatus(), timestamp: new Date().toISOString() });
+app.get("/api/health", async (req, res) => {
+  try {
+    const { getConnectionState } = require("./config/db");
+    const connection = getConnectionState();
+    const dbHealthy = connection.state === "connected";
+
+    const health = {
+      status: dbHealthy ? "ok" : "degraded",
+      service: "ecommerce-api",
+      version: "1.0.0",
+      environment: process.env.NODE_ENV || "development",
+      database: {
+        state: connection.state,
+        label: connection.label,
+        healthy: dbHealthy
+      },
+      integrations: integrationStatus(),
+      uptime: process.uptime(),
+      timestamp: new Date().toISOString()
+    };
+
+    const statusCode = dbHealthy ? 200 : 503;
+    res.status(statusCode).json(health);
+  } catch (error) {
+    res.status(503).json({
+      status: "error",
+      service: "ecommerce-api",
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
 });
 
 app.use(notFound);
@@ -70,40 +101,62 @@ const PORT = process.env.PORT || 5000;
 let server;
 
 const startServer = async () => {
-  validateEnvironment();
-  await connectDB();
+  try {
+    validateEnvironment();
+    await connectDB();
 
-  server = app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
-  });
+    server = app.listen(PORT, () => {
+      console.log(`Server running on port ${PORT}`);
+      console.log(`Environment: ${process.env.NODE_ENV || "development"}`);
+      console.log(`Client URL: ${process.env.CLIENT_URL || "http://localhost:5173"}`);
+    });
 
-  server.on("error", (error) => {
-    if (error.code === "EADDRINUSE") {
-      console.error(`Port ${PORT} is already in use. Stop the existing app or run npm run dev:clean.`);
+    server.on("error", (error) => {
+      if (error.code === "EADDRINUSE") {
+        console.error(`Port ${PORT} is already in use. Stop the existing app or run npm run dev:clean.`);
+        process.exit(1);
+      }
+
+      console.error("Server error:", error);
       process.exit(1);
-    }
-
-    console.error(error);
-    process.exit(1);
-  });
-};
-
-if (require.main === module) {
-  startServer().catch((error) => {
+    });
+  } catch (error) {
     console.error("Server startup failed:", error.message);
     process.exit(1);
-  });
-}
-
-const shutdown = () => {
-  if (!server) {
-    process.exit(0);
   }
-
-  server.close(() => process.exit(0));
 };
 
-process.on("SIGINT", shutdown);
-process.on("SIGTERM", shutdown);
+const gracefulShutdown = async () => {
+  console.log("Received shutdown signal. Starting graceful shutdown...");
+
+  if (server) {
+    server.close(() => {
+      console.log("HTTP server closed");
+    });
+  }
+
+  try {
+    const { disconnectDB } = require("./config/db");
+    await disconnectDB();
+  } catch (error) {
+    console.error("Error during shutdown:", error.message);
+  }
+
+  process.exit(0);
+};
+
+process.on("SIGINT", gracefulShutdown);
+process.on("SIGTERM", gracefulShutdown);
+process.on("unhandledRejection", (reason, promise) => {
+  console.error("Unhandled Rejection at:", promise, "reason:", reason);
+});
+process.on("uncaughtException", (error) => {
+  console.error("Uncaught Exception:", error);
+  process.exit(1);
+});
+
+if (require.main === module) {
+  startServer();
+}
 
 module.exports = { app, startServer };

@@ -1,5 +1,5 @@
 const path = require("path");
-const mongoose = require("mongoose");
+const { disconnectDB } = require("../config/db");
 const bcrypt = require("bcryptjs");
 
 require("dotenv").config({ path: path.resolve(__dirname, "../.env") });
@@ -116,11 +116,8 @@ const connect = async () => {
   if (process.argv.includes("--reset") && process.env[RESET_FLAG] !== "true") {
     throw new Error(`Reset requires ${RESET_FLAG}=true`);
   }
-  await mongoose.connect(process.env.MONGO_URI, {
-    serverSelectionTimeoutMS: 10000,
-    connectTimeoutMS: 10000,
-    family: 4
-  });
+  const { connectDB } = require("../config/db");
+  await connectDB();
 };
 
 const seedUsers = async () => {
@@ -319,5 +316,5 @@ run()
     process.exitCode = 1;
   })
   .finally(async () => {
-    if (mongoose.connection.readyState !== 0) await mongoose.connection.close();
+    await disconnectDB();
   });
