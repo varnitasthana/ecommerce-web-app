@@ -4,7 +4,7 @@ const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
 require("dotenv").config();
 
-const connectDB = require("./config/db");
+const { connectDB, disconnectDB } = require("./config/db");
 const authRoutes = require("./routes/authRoutes");
 const accountRoutes = require("./routes/accountRoutes");
 const productRoutes = require("./routes/productRoutes");
@@ -136,7 +136,6 @@ const gracefulShutdown = async () => {
   }
 
   try {
-    const { disconnectDB } = require("./config/db");
     await disconnectDB();
   } catch (error) {
     console.error("Error during shutdown:", error.message);
