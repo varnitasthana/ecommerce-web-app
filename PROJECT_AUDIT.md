@@ -12,7 +12,7 @@ This is an existing full-stack JavaScript ecommerce application with two runtime
 - Root scripts: run the client and server together with `concurrently`.
 - Authentication: bcrypt password hashing plus JWT bearer tokens.
 - Browser API access: Axios from `client/src/api.js`.
-- Payments: Stripe-hosted Checkout preparation with server-side pricing, stock reservation, and webhook settlement.
+- Payments: Razorpay Checkout with server-side pricing, stock reservation, and webhook settlement.
 - Integrations: Cloudinary signed-upload preparation, Resend-compatible email preparation, and a generic shipping-provider adapter.
 
 Normal local URLs:
@@ -48,7 +48,7 @@ The root command `npm run dev:clean` stops old project processes and starts one 
 - `Products.jsx`: product listing, search, category filter, price sorting, query-parameter support.
 - `ProductDetails.jsx`: product details, rating display, wishlist toggle, reviews, review submission.
 - `Cart.jsx`: cart items, quantity changes, removal, total display.
-- `Checkout.jsx`: shipping address collection and redirect to server-created Stripe Checkout.
+- `Checkout.jsx`: shipping address collection and redirect to Razorpay Checkout.
 - `Orders.jsx`: authenticated order history and payment/fulfilment status display.
 - `Login.jsx`: login form and JWT storage.
 - `Register.jsx`: registration form.
@@ -75,8 +75,8 @@ The root command `npm run dev:clean` stops old project processes and starts one 
 
 - Cart data is persisted in the browser, not associated with a server account.
 - Product search and filtering are performed in the browser after loading the product list; large catalogs need server-side search, indexes, pagination, and facet APIs.
-- Checkout redirects to Stripe only when real Stripe credentials and webhook configuration exist.
-- Order success clears the local cart when the customer returns with a success query parameter; final payment truth still comes from the server webhook.
+- Checkout redirects to Razorpay only when real Razorpay credentials and webhook configuration exist.
+- Order success clears the local cart when the customer returns from payment; final payment truth still comes from the server webhook or verification endpoint.
 - Tracking fields exist in orders, but there is no customer-facing tracking timeline UI.
 - Cloudinary upload signing exists on the server, but the admin UI still accepts an image URL and does not upload files.
 - The frontend has no logout action, account/profile page, password reset, pagination, advanced filters, or address book.
@@ -111,8 +111,8 @@ The root command `npm run dev:clean` stops old project processes and starts one 
 | `POST /api/sellers/applications` | Public | Submit seller partnership application |
 | `GET /api/sellers/applications` | Admin | List seller applications |
 | `PATCH /api/sellers/applications/:id` | Admin | Approve/reject seller application |
-| `POST /api/payments/webhook` | Stripe signed request | Settle payment events |
-| `POST /api/payments/create-checkout-session` | Authenticated | Validate cart, reserve stock, and create Stripe Checkout session |
+| `POST /api/payments/webhook` | Razorpay signed request | Settle payment events |
+| `POST /api/payments/create-order` | Authenticated | Validate cart, reserve stock, and create Razorpay order |
 | `GET /api/media/signature` | Admin | Create Cloudinary signed-upload parameters |
 
 ### Controllers
@@ -120,7 +120,7 @@ The root command `npm run dev:clean` stops old project processes and starts one 
 - `authController.js`: registration and login.
 - `productController.js`: product CRUD and product input validation.
 - `orderController.js`: current order listing and tracking lookup. It also contains an old `createOrder` implementation that is no longer routed and duplicates the payment flow.
-- `paymentController.js`: server-side cart validation, stock reservation/release, Stripe Checkout session creation, signed webhook verification, payment state changes, and order confirmation email trigger.
+- `paymentController.js`: server-side cart validation, stock reservation/release, Razorpay order creation, signed webhook verification, payment signature verification, payment state changes, and order confirmation email trigger.
 - `reviewController.js`: review creation, review listing, and product rating aggregation.
 - `wishlistController.js`: account wishlist retrieval and toggle behavior.
 - `sellerController.js`: seller application submission and admin status changes.
@@ -140,7 +140,7 @@ MongoDB Atlas is configured through `server/.env` and connected by Mongoose.
 
 - `User`: name, email, bcrypt password hash, role, timestamps.
 - `Product`: name, description, price, category, brand, image URL, stock, comparison price, rating, review count, delivery days, timestamps.
-- `Order`: owner, historical item name/price snapshots, quantities, shipping address, server total, fulfilment status, payment status, Stripe IDs, paid timestamp, stock reservation flag, shipping provider, tracking number, tracking URL.
+- `Order`: owner, historical item name/price snapshots, quantities, shipping address, server total, fulfilment status, payment status, Razorpay IDs, paid timestamp, stock reservation flag, shipping provider, tracking number, tracking URL.
 - `Review`: product reference, user reference, 1-5 rating, title, comment, timestamps, unique product/user index.
 - `Wishlist`: unique user reference and product references.
 - `SellerApplication`: optional applicant reference, brand/contact/category/catalog/message, pending/approved/rejected status.
@@ -156,7 +156,7 @@ MongoDB Atlas is configured through `server/.env` and connected by Mongoose.
 ### Database concerns
 
 - Product stock reservation is implemented with conditional atomic updates per item, but a multi-item checkout is not wrapped in a MongoDB transaction.
-- Abandoned Stripe sessions do not have a scheduled cleanup job; stock release depends on received expiry/failure events.
+- Abandoned Razorpay orders do not have a scheduled cleanup job; stock release depends on webhook or verification failure events.
 - Seller applications have no duplicate/spam policy or verification workflow.
 - There is no seller ownership relation on `Product`, so approved partners cannot yet manage their own catalog securely.
 - No migration/versioning process exists for future schema changes.
@@ -186,32 +186,33 @@ MongoDB Atlas is configured through `server/.env` and connected by Mongoose.
 
 ### Current implementation
 
-- Stripe SDK is installed in the server.
-- Checkout uses Stripe-hosted Checkout rather than collecting card data in the app.
+- Razorpay SDK is installed in the server.
+- Checkout uses Razorpay-hosted Checkout rather than collecting card data in the app.
 - Server loads products from MongoDB and calculates the authoritative total.
-- Server reserves stock before creating a Checkout session.
-- A pending-payment order is created with Stripe session metadata.
-- Stripe webhook signatures are verified using the raw request body.
-- Successful webhook events mark the order paid/confirmed.
-- Failure/expiry events release reserved stock and cancel the order.
+- Server reserves stock before creating a Razorpay order.
+- A pending-payment order is created with Razorpay order metadata.
+- Razorpay webhook signatures are verified using the raw request body.
+- The frontend also verifies payment signatures server-side through `/api/payments/verify`.
+- Successful webhook or verification events mark the order paid/confirmed.
+- Failure events release reserved stock and cancel the order.
 - Payment confirmation email is attempted after successful webhook settlement.
-- The order records payment status and Stripe IDs.
+- The order records payment status and Razorpay IDs.
 
 ### Configuration status
 
 `server/.env.example` documents:
 
-- `STRIPE_SECRET_KEY`
-- `STRIPE_WEBHOOK_SECRET`
-- `STRIPE_CURRENCY`
+- `RAZORPAY_KEY_ID`
+- `RAZORPAY_KEY_SECRET`
+- `RAZORPAY_WEBHOOK_SECRET`
 - `CLIENT_URL`
 
-The local environment contains the Stripe variable names, but the supplied values are placeholders. The integration readiness code correctly reports payments as not configured when placeholders are present. No real Stripe secret is included in this report or repository.
+The local environment contains the Razorpay variable names, but the supplied values are placeholders. The integration readiness code correctly reports payments as not configured when placeholders are present. No real Razorpay secret is included in this report or repository.
 
 ### Missing payment production controls
 
-- Stripe test Checkout has not been run in this audit.
-- Webhook retry/idempotency coverage has not been automated.
+- Razorpay test Checkout has not been run in this audit.
+- Razorpay checkout webhook retry/idempotency coverage has not been automated.
 - Refund and partial-refund workflows are missing.
 - Payment reconciliation/admin payment views are missing.
 - Abandoned-session cleanup job is missing.
@@ -235,7 +236,7 @@ The local environment contains the Stripe variable names, but the supplied value
 | Reviews/ratings | Implemented | `ProductDetails.jsx`, review routes/controller/model | One review per user/product; review ownership editing/deletion missing. |
 | Admin product CRUD | Implemented | `Admin.jsx`, product routes/controller | Admin UI uses image URL, not media upload. |
 | Orders in MongoDB | Partially Implemented | `Order.js`, `orderController.js` | History exists; fulfillment/admin lifecycle is incomplete. |
-| Stripe Checkout | Partially Implemented | `paymentController.js`, `Checkout.jsx` | Requires real test keys and webhook; not tested end-to-end here. |
+| Razorpay Checkout | Partially Implemented | `paymentController.js`, `Checkout.jsx` | Requires real test keys and webhook; not tested end-to-end here. |
 | Payment webhooks | Partially Implemented | `paymentController.js`, `server.js` | Signature verification and states exist; automated retry/reconciliation tests missing. |
 | Cloudinary uploads | Prepared | `mediaController.js`, `mediaRoutes.js` | Signed endpoint exists; credentials and admin upload UI are absent. |
 | Email notifications | Prepared | `emailService.js`, payment webhook | Resend-compatible order email only; credentials and delivery testing absent. |
@@ -256,7 +257,7 @@ The local environment contains the Stripe variable names, but the supplied value
 - Environment files are ignored by Git.
 - Passwords are hashed with bcrypt.
 - Admin product writes are protected server-side.
-- Stripe webhook signature verification is present.
+- Razorpay webhook signature verification is present.
 - Helmet headers and CORS restrictions are present.
 - API rate limiting is present.
 - Payment totals and stock checks are server-side.
@@ -342,12 +343,12 @@ Keep the current client/server split and evolve it without a rewrite.
 
 2. **Test the existing contracts**
    - Add auth, product, order, wishlist, review, seller, and health API tests.
-   - Add Stripe webhook fixtures for success, failure, duplicate, and retry events.
+   - Add Razorpay webhook fixtures for success, failure, duplicate, and retry events.
    - Add client smoke tests for login, catalog, cart, checkout redirect, and protected routes.
 
 3. **Complete payments**
-   - Configure Stripe test credentials and Stripe CLI webhook forwarding.
-   - Test successful card, declined card, cancellation, webhook retry, insufficient stock, and abandoned checkout.
+- Configure Razorpay test credentials and webhook forwarding.
+- Test successful card, declined card, cancellation, webhook retry, insufficient stock, and abandoned checkout.
    - Add refunds, reconciliation, tax/shipping fees, coupons, and payment admin views.
 
 4. **Complete marketplace operations**
@@ -364,7 +365,7 @@ Keep the current client/server split and evolve it without a rewrite.
    - Cloudinary/S3 credentials and admin upload UI.
    - Resend/SendGrid/Postmark credentials and verified sending domain.
    - Shipping provider credentials and webhook/event mapping.
-   - Stripe production account, tax/refund/reconciliation review.
+   - Razorpay production account, tax/refund/reconciliation review.
 
 7. **Stage and launch**
    - Deploy staging client/API with HTTPS.
@@ -386,7 +387,7 @@ Keep the current client/server split and evolve it without a rewrite.
 - GitHub tracking: local `main` and `origin/main` were aligned at the time of audit.
 - `server/.env`: ignored by Git; secret values were not exposed.
 - Automated test suite: not available in the repository.
-- End-to-end Stripe, Cloudinary, email, and shipping transactions: not claimed as tested because real provider credentials are not configured.
+- End-to-end Razorpay, Cloudinary, email, and shipping transactions: not claimed as tested because real provider credentials are not configured.
 
 ## Final Assessment
 
