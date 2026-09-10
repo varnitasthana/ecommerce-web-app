@@ -121,13 +121,13 @@ node -c server/server.js       # Check server syntax
 - URL: `https://staging.example.com`
 - API: `https://api-staging.example.com`
 - Database: MongoDB Atlas staging
-- Stripe: Test mode keys
+- Razorpay: Test mode keys
 
 ### Production
 - URL: `https://example.com`
 - API: `https://api.example.com`
 - Database: MongoDB Atlas production
-- Stripe: Live mode keys
+- Razorpay: Live mode keys
 
 ## Environment Variables
 
@@ -137,16 +137,16 @@ NODE_ENV=development
 PORT=5000
 MONGO_URI=mongodb+srv://user:pass@cluster.mongodb.net/ecommerce
 JWT_SECRET=your-secret-key-at-least-24-characters
-STRIPE_SECRET_KEY=sk_test_...
-STRIPE_WEBHOOK_SECRET=whsec_...
-STRIPE_CURRENCY=inr
+RAZORPAY_KEY_ID=your_test_key_id
+RAZORPAY_KEY_SECRET=your_test_key_secret
+RAZORPAY_WEBHOOK_SECRET=your_webhook_secret
 CLIENT_URL=http://localhost:5173
 ```
 
 ### .env for Staging/Production
 All variables same as above, with appropriate:
 - MONGO_URI pointing to staging/production database
-- STRIPE_SECRET_KEY using staging/production keys
+- RAZORPAY_KEY_ID using staging/production keys
 - CLIENT_URL for the deployed frontend
 - NODE_ENV=production
 
@@ -188,7 +188,7 @@ Response:
 
 2. **Database Migration Rollback**
    - MongoDB: Restore from backup snapshot
-   - Stripe: Use Stripe's test mode for verification
+   - Razorpay test mode for verification
 
 3. **Communication**
    - Notify customer support team
