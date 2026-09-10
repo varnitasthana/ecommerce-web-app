@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../services/api';
 import Button from '../components/Button';
+import Breadcrumb from '../components/Breadcrumb';
+import PriceDropAlert from '../components/PriceDropAlert';
 
 function Wishlist({ addToCart }) {
   const [products, setProducts] = useState([]);
@@ -21,6 +23,7 @@ function Wishlist({ addToCart }) {
 
   return (
     <section className="page-block" style={{ maxWidth: '1200px', margin: '0 auto' }}>
+      <Breadcrumb items={[{ label: 'Home', path: '/' }, { label: 'Wishlist' }]} />
       <div className="section-heading home-section-heading">
         <div>
           <p className="eyebrow">Saved for later</p>
@@ -48,7 +51,18 @@ function Wishlist({ addToCart }) {
                   <h3>{product.name}</h3>
                   <div className="product-meta">
                     <span className="product-price-current">₹{product.price}</span>
+                    {product.compareAtPrice && product.compareAtPrice > product.price && (
+                      <span className="product-price-original">₹{product.compareAtPrice}</span>
+                    )}
                   </div>
+                  {product.compareAtPrice && product.compareAtPrice > product.price && (
+                    <PriceDropAlert
+                      productId={product._id}
+                      productName={product.name}
+                      currentPrice={`₹${product.price}`}
+                      oldPrice={`₹${product.compareAtPrice}`}
+                    />
+                  )}
                   <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.75rem', flexWrap: 'wrap' }} onClick={(e) => e.preventDefault()}>
                     <Button to={`/products/${product._id}`} variant="outline" size="sm" style={{ flex: 1 }}>View</Button>
                     <Button onClick={(e) => { e.preventDefault(); addToCart(product); }} size="sm" style={{ flex: 1 }}>Add to cart</Button>
