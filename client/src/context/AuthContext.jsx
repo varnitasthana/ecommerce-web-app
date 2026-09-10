@@ -9,6 +9,7 @@ export function AuthProvider({ children }) {
 
   const clearSession = () => {
     localStorage.removeItem('token');
+    localStorage.removeItem('refreshToken');
     localStorage.removeItem('user');
     setUser(null);
   };
@@ -30,7 +31,11 @@ export function AuthProvider({ children }) {
   }, []);
 
   const login = (data) => {
-    localStorage.setItem('token', data.token);
+    const accessToken = data.accessToken || data.token;
+    localStorage.setItem('token', accessToken);
+    if (data.refreshToken) {
+      localStorage.setItem('refreshToken', data.refreshToken);
+    }
     localStorage.setItem('user', JSON.stringify(data.user));
     setUser(data.user);
   };
