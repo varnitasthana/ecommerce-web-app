@@ -75,6 +75,11 @@ const userSchema = new mongoose.Schema(
       default: 0
     },
 
+    recentlyViewed: {
+      type: [{ type: mongoose.Schema.Types.ObjectId, ref: "Product" }],
+      default: []
+    },
+
     isActive: {
       type: Boolean,
       default: true,
