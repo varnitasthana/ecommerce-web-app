@@ -24,4 +24,24 @@ const toggleWishlist = async (req, res) => {
   res.status(200).json({ saved: !exists, products: wishlist.products });
 };
 
-module.exports = { getWishlist, toggleWishlist };
+const getPriceAlert = async (req, res) => {
+  const wishlist = await Wishlist.findOne({ user: req.user.id });
+  const alerts = wishlist?.priceAlerts || {};
+  res.status(200).json({ enabled: !!alerts[req.params.productId] });
+};
+
+const togglePriceAlert = async (req, res) => {
+  const wishlist = await Wishlist.findOneAndUpdate(
+    { user: req.user.id },
+    { $setOnInsert: { user: req.user.id } },
+    { returnDocument: "after", upsert: true }
+  );
+  const productId = req.params.productId;
+  const alerts = wishlist.priceAlerts || {};
+  const enabled = !alerts[productId];
+  wishlist.priceAlerts = { ...alerts, [productId]: enabled ? true : undefined };
+  await wishlist.save();
+  res.status(200).json({ enabled });
+};
+
+module.exports = { getWishlist, toggleWishlist, getPriceAlert, togglePriceAlert };
