@@ -11,7 +11,15 @@
     "lint": "npm --prefix client run lint",
     "build": "npm --prefix client run build",
     "test:client": "npm --prefix client test",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "deploy": "bash scripts/deploy.sh",
+    "deploy:windows": "powershell -ExecutionPolicy Bypass -File scripts/deploy.ps1",
+    "docker:build": "docker-compose build",
+    "docker:up": "docker-compose up -d",
+    "docker:down": "docker-compose down",
+    "docker:logs": "docker-compose logs -f",
+    "verify": "node scripts/verify-deployment.js",
+    "setup": "node scripts/setup.js"
   },
   "devDependencies": {
     "@playwright/test": "^1.62.1",
