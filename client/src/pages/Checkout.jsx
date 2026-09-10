@@ -1,36 +1,22 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   FaLock,
   FaTruck,
   FaUndoAlt,
-  FaCheckCircle,
-  FaQrcode
+  FaCheckCircle
 } from 'react-icons/fa';
 import api from '../services/api';
 import Button from '../components/Button';
+import Breadcrumb from '../components/Breadcrumb';
 
 const PAYMENT_METHODS = [
   {
-    id: 'upi',
-    label: 'UPI / GPay / PhonePe / BHIM / Navi Pay',
-    description: 'Pay instantly using any UPI app',
-    icon: '💳',
-    options: ['Google Pay', 'PhonePe', 'BHIM', 'Navi Pay', 'Any UPI App']
-  },
-  {
-    id: 'card',
-    label: 'Credit / Debit Card',
-    description: 'Visa, Mastercard, RuPay, Amex',
-    icon: '🏦',
-    options: ['Visa', 'Mastercard', 'RuPay', 'Amex']
-  },
-  {
-    id: 'wallet',
-    label: 'Wallets',
-    description: 'Paytm, Amazon Pay, MobiKwik',
-    icon: '📱',
-    options: ['Paytm', 'Amazon Pay', 'MobiKwik']
+    id: 'razorpay',
+    label: 'Razorpay',
+    description: 'Pay securely using Cards, UPI, Wallets, or Net Banking',
+    icon: '🔐',
+    options: ['Visa', 'Mastercard', 'RuPay', 'UPI', 'Paytm', 'PhonePe', 'Net Banking']
   },
   {
     id: 'cod',
@@ -41,40 +27,90 @@ const PAYMENT_METHODS = [
   }
 ];
 
-function Checkout({ cart, totalPrice }) {
+function Checkout({ cart, totalPrice, clearCart }) {
   const navigate = useNavigate();
   const [message, setMessage] = useState('');
   const [messageType, setMessageType] = useState('');
   const [processing, setProcessing] = useState(false);
-  const [address, setAddress] = useState({ name: '', street: '', city: '', postalCode: '', country: '' });
+  const [address, setAddress] = useState({ name: '', street: '', city: '', postalCode: '', country: '', phone: '' });
+  const [savedAddresses, setSavedAddresses] = useState([]);
+  const [selectedAddressId, setSelectedAddressId] = useState(null);
   const [errors, setErrors] = useState({});
-  const [paymentMethod, setPaymentMethod] = useState('upi');
-  const [upiId, setUpiId] = useState('');
-  const [upiQR, setUpiQR] = useState('');
-  const [showUPIQR, setShowUPIQR] = useState(false);
-  const [cardDetails, setCardDetails] = useState({ number: '', expiry: '', cvv: '', name: '' });
+  const [paymentMethod, setPaymentMethod] = useState('razorpay');
   const [demoMode, setDemoMode] = useState(false);
   const [orderSuccess, setOrderSuccess] = useState(null);
-  const paymentCancelled = new URLSearchParams(window.location.search).get('payment') === 'cancelled';
+  const [razorpayLoaded, setRazorpayLoaded] = useState(false);
+  const [loadingAddresses, setLoadingAddresses] = useState(true);
+  const [paymentCancelled, setPaymentCancelled] = useState(false);
+  const submittingRef = useRef(false);
 
   useEffect(() => {
-    const checkStripe = async () => {
+    setPaymentCancelled(new URLSearchParams(window.location.search).get('payment') === 'cancelled');
+  }, []);
+
+  const checkoutRequestId = useMemo(() => {
+    const stored = sessionStorage.getItem('checkoutRequestId');
+    if (stored) return stored;
+    const generated = `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+    sessionStorage.setItem('checkoutRequestId', generated);
+    return generated;
+  }, []);
+
+  useEffect(() => {
+    const checkRazorpay = async () => {
       try {
-        await api.get('/health');
-        setDemoMode(false);
+        const { data } = await api.get('/health');
+        setDemoMode(!data.integrations?.payments);
       } catch {
         setDemoMode(true);
       }
     };
-    checkStripe();
+    checkRazorpay();
   }, []);
 
-  const generateUPIQR = () => {
-    const amount = calculateTotal();
-    const upiString = `upi://pay?pa=shopease@upi&pn=ShopEase&am=${amount}&cu=INR&tr=${Date.now()}`;
-    setUpiQR(`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(upiString)}`);
-    setShowUPIQR(true);
-  };
+  useEffect(() => {
+    const loadAddresses = async () => {
+      try {
+        const { data } = await api.get('/account/addresses');
+        const addresses = Array.isArray(data) ? data : [];
+        setSavedAddresses(addresses);
+        const defaultAddr = addresses.find((a) => a.isDefault) || addresses[0];
+        if (defaultAddr) {
+          setAddress({
+            name: defaultAddr.name,
+            street: defaultAddr.street,
+            city: defaultAddr.city,
+            postalCode: defaultAddr.postalCode,
+            country: defaultAddr.country || 'India',
+            phone: defaultAddr.phone || ''
+          });
+          setSelectedAddressId(defaultAddr._id);
+        }
+      } catch {
+        setSavedAddresses([]);
+      } finally {
+        setLoadingAddresses(false);
+      }
+    };
+    loadAddresses();
+  }, []);
+
+  useEffect(() => {
+    if (demoMode || paymentMethod === 'cod') return;
+
+    const script = document.createElement('script');
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+    script.async = true;
+    script.onload = () => setRazorpayLoaded(true);
+    script.onerror = () => setRazorpayLoaded(false);
+    document.body.appendChild(script);
+
+    return () => {
+      if (script.parentNode) {
+        script.parentNode.removeChild(script);
+      }
+    };
+  }, [demoMode, paymentMethod]);
 
   const validateAddress = () => {
     const next = {};
@@ -87,33 +123,29 @@ function Checkout({ cart, totalPrice }) {
     return Object.keys(next).length === 0;
   };
 
-  const validatePayment = () => {
-    if (paymentMethod === 'upi') {
-      if (!upiId.trim()) {
-        setMessage('Please enter your UPI ID');
-        setMessageType('error');
-        return false;
-      }
-    }
-    if (paymentMethod === 'card') {
-      if (!cardDetails.number || !cardDetails.expiry || !cardDetails.cvv || !cardDetails.name) {
-        setMessage('Please fill in all card details');
-        setMessageType('error');
-        return false;
-      }
-    }
-    return true;
-  };
-
   const handleChange = (event) => {
     const { name, value } = event.target;
     setAddress((prev) => ({ ...prev, [name]: value }));
+    setSelectedAddressId(null);
     if (errors[name]) setErrors((prev) => ({ ...prev, [name]: undefined }));
+  };
+
+  const handleSelectAddress = (addr) => {
+    setAddress({
+      name: addr.name,
+      street: addr.street,
+      city: addr.city,
+      postalCode: addr.postalCode,
+      country: addr.country || 'India',
+      phone: addr.phone || ''
+    });
+    setSelectedAddressId(addr._id);
+    setErrors({});
   };
 
   const calculateTotal = () => {
     const subtotal = totalPrice || 0;
-    const shipping = subtotal > 999 ? 0 : 49;
+    const shipping = subtotal >= 999 ? 0 : 49;
     const tax = Math.round(subtotal * 0.18);
     return subtotal + shipping + tax;
   };
@@ -129,36 +161,110 @@ function Checkout({ cart, totalPrice }) {
     }
 
     if (!validateAddress()) return;
-    if (!validatePayment()) return;
 
+    if (submittingRef.current) return;
+    submittingRef.current = true;
     setProcessing(true);
+
     try {
       const items = cart.map((item) => ({ product: item._id || item.id, quantity: item.quantity }));
+      const payload = {
+        items,
+        shippingAddress: address,
+        ...(selectedAddressId ? { addressId: selectedAddressId } : {})
+      };
 
-      if (demoMode || paymentMethod === 'upi' || paymentMethod === 'cod' || paymentMethod === 'wallet') {
+      if (demoMode || paymentMethod === 'cod') {
         const { data } = await api.post('/payments/demo-checkout', {
-          items,
-          shippingAddress: address,
-          paymentMethod
+          ...payload,
+          paymentMethod: paymentMethod === 'cod' ? 'cod' : 'demo'
+        }, {
+          headers: { 'Idempotency-Key': checkoutRequestId }
         });
+        sessionStorage.removeItem('checkoutRequestId');
         setOrderSuccess(data);
+        clearCart();
         navigate(`/order-confirmation?orderId=${data.orderId}&paymentMethod=${paymentMethod}`);
       } else {
-        const { data } = await api.post('/payments/create-checkout-session', {
-          items,
-          shippingAddress: address,
-          paymentMethod
+        const { data } = await api.post('/payments/create-order', payload, {
+          headers: { 'Idempotency-Key': checkoutRequestId }
         });
-        if (data.checkoutUrl) {
-          window.location.assign(data.checkoutUrl);
-        } else {
-          navigate(`/order-confirmation?orderId=${data.orderId}&paymentMethod=${paymentMethod}`);
+
+        sessionStorage.removeItem('checkoutRequestId');
+
+        if (data.idempotent && data.order) {
+          setOrderSuccess({ orderId: data.order._id, demo: false, paymentMethod: 'razorpay' });
+          clearCart();
+          navigate(`/order-confirmation?orderId=${data.order._id}&paymentMethod=${paymentMethod}`);
+          return;
         }
+
+        if (!razorpayLoaded || !window.Razorpay) {
+          throw new Error('Razorpay checkout is not loaded. Please check your internet connection and try again.');
+        }
+
+        const options = {
+          key: data.razorpayKeyId,
+          amount: data.amount,
+          currency: data.currency || 'INR',
+          name: 'ShopEase',
+          description: 'Order Payment',
+          order_id: data.razorpayOrderId,
+          prefill: {
+            email: data.userEmail || '',
+            contact: ''
+          },
+          theme: {
+            color: '#4f46e5'
+          },
+          handler: async (response) => {
+            try {
+              const verifyData = await api.post('/payments/verify', {
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature
+              });
+
+              if (verifyData.data.orderId) {
+                clearCart();
+                navigate(`/order-confirmation?orderId=${verifyData.data.orderId}`);
+              } else {
+                setMessage('Payment verification failed. Please contact support if amount was deducted.');
+                setMessageType('error');
+                setProcessing(false);
+              }
+            } catch (err) {
+              setMessage(err.response?.data?.message || 'Payment verification failed. Please contact support.');
+              setMessageType('error');
+              setProcessing(false);
+            }
+          },
+          modal: {
+            ondismiss: () => {
+              setProcessing(false);
+              submittingRef.current = false;
+            }
+          }
+        };
+
+        const rzp = new window.Razorpay(options);
+        rzp.open();
       }
     } catch (error) {
-      setMessage(error.response?.data?.message || 'Could not place order. Please try again.');
-      setMessageType('error');
+      const serverMessage = error.response?.data?.message;
+      const errorCode = error.response?.data?.code;
+
+      if (errorCode === 'RAZORPAY_AUTH_FAILED') {
+        setMessage('Online payments are temporarily unavailable. Please choose Cash on Delivery or contact support.');
+        setMessageType('error');
+        setPaymentMethod('cod');
+      } else {
+        setMessage(serverMessage || 'Could not place order. Please try again.');
+        setMessageType('error');
+      }
+    } finally {
       setProcessing(false);
+      submittingRef.current = false;
     }
   };
 
@@ -185,6 +291,7 @@ function Checkout({ cart, totalPrice }) {
 
   return (
     <section className="checkout-page">
+      <Breadcrumb items={[{ label: 'Home', path: '/' }, { label: 'Cart', path: '/cart' }, { label: 'Checkout' }]} />
       <div style={{ marginBottom: '2rem' }}>
         <h2>Checkout</h2>
         <p className="muted">Complete your order securely</p>
@@ -212,7 +319,30 @@ function Checkout({ cart, totalPrice }) {
             {/* SHIPPING ADDRESS */}
             <div className="card">
               <h3 className="checkout-card-title">Shipping Address</h3>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+              
+              {savedAddresses.length > 0 && (
+                <div style={{ marginBottom: '1.5rem' }}>
+                  <p style={{ margin: '0 0 0.75rem', fontWeight: 600, fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Saved Addresses</p>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                    {savedAddresses.map((addr) => (
+                      <label key={addr._id} style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem', padding: '1rem', borderRadius: 'var(--radius-md)', border: selectedAddressId === addr._id ? '2px solid var(--primary)' : '1px solid var(--border)', background: selectedAddressId === addr._id ? 'var(--primary-light)' : 'var(--bg-secondary)', cursor: 'pointer', transition: 'all 0.2s ease' }}>
+                        <input type="radio" name="savedAddress" checked={selectedAddressId === addr._id} onChange={() => handleSelectAddress(addr)} style={{ marginTop: '0.2rem', accentColor: 'var(--primary)' }} />
+                        <div style={{ flex: 1 }}>
+                          <p style={{ margin: '0 0 0.25rem', fontWeight: 600 }}>{addr.name} {addr.isDefault && <span style={{ fontSize: '0.75rem', background: 'var(--primary)', color: 'white', padding: '0.15rem 0.5rem', borderRadius: 'var(--radius-full)', marginLeft: '0.5rem' }}>Default</span>}</p>
+                          <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{addr.street}, {addr.city}, {addr.postalCode}, {addr.country}</p>
+                          {addr.phone && <p style={{ margin: '0.25rem 0 0', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>📞 {addr.phone}</p>}
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+                  <button type="button" onClick={() => setSelectedAddressId(null)} style={{ marginTop: '0.75rem', background: 'transparent', border: 'none', color: 'var(--primary)', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600 }}>
+                    + Use a different address
+                  </button>
+                </div>
+              )}
+
+              {(!selectedAddressId || savedAddresses.length === 0) && (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                 <div className="form-group">
                   <label htmlFor="name">Full Name</label>
                   <input id="name" name="name" placeholder="Your full name" value={address.name} onChange={handleChange} required />
@@ -223,6 +353,7 @@ function Checkout({ cart, totalPrice }) {
                   <input id="phone" name="phone" placeholder="+91 98765 43210" value={address.phone || ''} onChange={handleChange} />
                 </div>
               </div>
+              )}
               <div className="form-group">
                 <label htmlFor="street">Street Address</label>
                 <input id="street" name="street" placeholder="House no., building, street, area" value={address.street} onChange={handleChange} required />
@@ -263,7 +394,6 @@ function Checkout({ cart, totalPrice }) {
                       checked={paymentMethod === method.id}
                       onChange={(e) => {
                         setPaymentMethod(e.target.value);
-                        setShowUPIQR(false);
                         setMessage('');
                       }}
                       style={{ width: '20px', height: '20px', accentColor: 'var(--primary)' }}
@@ -277,115 +407,19 @@ function Checkout({ cart, totalPrice }) {
                 ))}
               </div>
 
-              {paymentMethod === 'upi' && (
-                <div className="checkout-payment-details">
-                  <h4>UPI Payment</h4>
-                  <div style={{ display: 'grid', gap: '1rem' }}>
-                    <div>
-                      <label style={{ fontSize: '0.85rem', fontWeight: '600', marginBottom: '0.5rem', display: 'block' }}>Select UPI App</label>
-                      <div className="checkout-upi-apps">
-                        {['Google Pay', 'PhonePe', 'BHIM', 'Navi Pay'].map((app) => (
-                          <button
-                            key={app}
-                            type="button"
-                            onClick={() => {
-                              setUpiId(`${app.toLowerCase().replace(' ', '')}@${app === 'Navi Pay' ? 'navipay' : app.toLowerCase().replace(' ', '')}`);
-                              setShowUPIQR(false);
-                            }}
-                            className={`checkout-upi-app-btn ${upiId.includes(app.toLowerCase().replace(' ', '')) ? 'checkout-upi-app-btn-selected' : ''}`}
-                          >
-                            {app}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                    <div className="form-group">
-                      <label htmlFor="upiId">Or enter UPI ID</label>
-                      <input
-                        id="upiId"
-                        placeholder="yourname@upi"
-                        value={upiId}
-                        onChange={(e) => { setUpiId(e.target.value); setShowUPIQR(false); }}
-                        className="form-input"
-                      />
-                    </div>
-                    {upiId && !showUPIQR && (
-                      <Button type="button" variant="secondary" size="sm" onClick={generateUPIQR}>
-                        <FaQrcode /> Generate QR Code
-                      </Button>
-                    )}
-                    {showUPIQR && upiQR && (
-                      <div className="checkout-qr-container">
-                        <img src={upiQR} alt="UPI QR Code" className="checkout-qr-image" />
-                        <p className="checkout-qr-text">Scan QR to pay ₹{total}</p>
-                        <p className="checkout-qr-upi">Or pay to: {upiId}</p>
-                        <Button type="button" variant="outline" size="sm" onClick={() => setShowUPIQR(false)} style={{ marginTop: '0.5rem' }}>
-                          Change UPI ID
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {paymentMethod === 'card' && (
-                <div className="checkout-payment-details">
-                  <h4>Card Details</h4>
-                  <div className="checkout-card-details-grid">
-                    <div className="form-group">
-                      <label htmlFor="cardNumber">Card Number</label>
-                      <input
-                        id="cardNumber"
-                        placeholder="1234 5678 9012 3456"
-                        value={cardDetails.number}
-                        onChange={(e) => setCardDetails({ ...cardDetails, number: e.target.value })}
-                        maxLength={19}
-                        className="form-input"
-                      />
-                    </div>
-                    <div className="checkout-card-details-row">
-                      <div className="form-group">
-                        <label htmlFor="expiry">Expiry Date</label>
-                        <input
-                          id="expiry"
-                          placeholder="MM/YY"
-                          value={cardDetails.expiry}
-                          onChange={(e) => setCardDetails({ ...cardDetails, expiry: e.target.value })}
-                          maxLength={5}
-                          className="form-input"
-                        />
-                      </div>
-                      <div className="form-group">
-                        <label htmlFor="cvv">CVV</label>
-                        <input
-                          id="cvv"
-                          type="password"
-                          placeholder="123"
-                          value={cardDetails.cvv}
-                          onChange={(e) => setCardDetails({ ...cardDetails, cvv: e.target.value })}
-                          maxLength={3}
-                          className="form-input"
-                        />
-                      </div>
-                    </div>
-                    <div className="form-group">
-                      <label htmlFor="cardName">Cardholder Name</label>
-                      <input
-                        id="cardName"
-                        placeholder="Name on card"
-                        value={cardDetails.name}
-                        onChange={(e) => setCardDetails({ ...cardDetails, name: e.target.value })}
-                        className="form-input"
-                      />
-                    </div>
-                  </div>
-                </div>
-              )}
-
               {paymentMethod === 'cod' && (
                 <div className="checkout-payment-details" style={{ background: 'var(--success-light)', border: '1px solid var(--success)' }}>
                   <p style={{ margin: 0, color: 'var(--success)', fontWeight: '600' }}>💵 Pay on Delivery</p>
                   <p className="muted" style={{ fontSize: '0.85rem', marginTop: '0.5rem' }}>Pay cash or card when you receive your order.</p>
+                </div>
+              )}
+
+              {paymentMethod === 'razorpay' && (
+                <div className="checkout-payment-details" style={{ background: 'var(--primary-light)', border: '1px solid var(--primary)' }}>
+                  <p style={{ margin: 0, color: 'var(--primary)', fontWeight: '600' }}>🔐 Secure Razorpay Checkout</p>
+                  <p className="muted" style={{ fontSize: '0.85rem', marginTop: '0.5rem' }}>
+                    You will be redirected to Razorpay's secure payment page to complete your transaction. We support Cards, UPI, Wallets, and Net Banking.
+                  </p>
                 </div>
               )}
             </div>
@@ -400,9 +434,9 @@ function Checkout({ cart, totalPrice }) {
                   {cart.map((item) => (
                     <div key={item._id || item.id} className="checkout-item checkout-order-item">
                       <div className="checkout-order-item-info">
-                        <img src={item.image || 'https://via.placeholder.com/50x50'} alt={item.name} className="checkout-order-item-image" />
+                        <img src={item.image || 'https://via.placeholder.com/50x50'} alt={item.name || 'Product'} className="checkout-order-item-image" />
                         <div>
-                          <p className="checkout-order-item-name">{item.name}</p>
+                          <p className="checkout-order-item-name">{item.name || 'Product'}</p>
                           <p className="checkout-order-item-qty">Qty: {item.quantity}</p>
                         </div>
                       </div>
