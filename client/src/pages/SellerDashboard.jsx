@@ -1,15 +1,21 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import api from '../services/api';
+import { formatCurrency } from '../utils/formatters';
 
 function SellerDashboard() {
   const [applications, setApplications] = useState([]);
   const [products, setProducts] = useState([]);
+  const [orders, setOrders] = useState([]);
+  const [analytics, setAnalytics] = useState(null);
   const [message, setMessage] = useState('');
   const [form, setForm] = useState({ name: '', description: '', category: 'Electronics', brand: '', price: '', stock: '', sku: '' });
 
   useEffect(() => {
     api.get('/sellers/my-applications').then(({ data }) => setApplications(data)).catch(() => setApplications([]));
     api.get('/sellers/products').then(({ data }) => setProducts(data.products || [])).catch(() => setProducts([]));
+    api.get('/sellers/orders?limit=20').then(({ data }) => setOrders(data.orders || data || [])).catch(() => setOrders([]));
+    api.get('/sellers/analytics').then(({ data }) => setAnalytics(data)).catch(() => setAnalytics(null));
   }, []);
 
   const handleChange = (event) => setForm({ ...form, [event.target.name]: event.target.value });
@@ -27,11 +33,33 @@ function SellerDashboard() {
     }
   };
 
+  const stats = analytics || { totalRevenue: 0, totalOrders: 0, totalSales: 0, pendingOrders: 0, lowStockProducts: [] };
+
   return (
     <section className="page-block">
-      <p className="eyebrow">Seller workspace</p>
-      <h1>Partner dashboard</h1>
-      <p className="muted">Manage onboarding, publish products, and keep your seller inventory visible in one workspace.</p>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.5rem' }}>
+        <div>
+          <p className="eyebrow">Seller workspace</p>
+          <h1>Partner dashboard</h1>
+          <p className="muted">Manage onboarding, publish products, and keep your seller inventory visible in one workspace.</p>
+        </div>
+        <Link to="/seller/analytics" className="primary-btn">View Analytics</Link>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
+        {[
+           { label: 'Total Revenue', value: formatCurrency(stats.totalRevenue || 0), color: 'var(--primary)' },
+          { label: 'Total Orders', value: stats.totalOrders || 0, color: 'var(--success)' },
+          { label: 'Products Sold', value: stats.totalSales || 0, color: 'var(--secondary)' },
+          { label: 'Pending Orders', value: stats.pendingOrders || 0, color: 'var(--danger)' }
+        ].map((stat) => (
+          <div key={stat.label} className="card" style={{ padding: '1.5rem', borderLeft: `4px solid ${stat.color}` }}>
+            <p style={{ margin: '0 0 0.5rem', fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.05rem', color: 'var(--text-tertiary)', fontWeight: 600 }}>{stat.label}</p>
+            <p style={{ margin: 0, fontSize: '2rem', fontWeight: 700, color: 'var(--text-primary)' }}>{stat.value}</p>
+          </div>
+        ))}
+      </div>
+
       <div className="seller-workspace-grid">
         <form className="seller-product-form" onSubmit={createProduct}>
           <h2>Add product</h2>
@@ -52,9 +80,9 @@ function SellerDashboard() {
         <div className="seller-products-panel">
           <div className="section-heading"><h2>Your catalog</h2><span>{products.length} products</span></div>
           {products.length ? products.map((product) => (
-            <article className="seller-product-row" key={product._id}>
-              <div><strong>{product.name}</strong><p className="muted">{product.brand} · {product.category}</p></div>
-              <div><strong>₹{product.price}</strong><p className="muted">{product.stock} in stock</p></div>
+            <article className="seller-product-row" key={product._id || product.id}>
+              <div><strong>{product.name || 'Product'}</strong><p className="muted">{product.brand || 'ShopEase'} · {product.category || 'N/A'}</p></div>
+              <div><strong>₹{product.price ?? 0}</strong><p className="muted">{product.stock ?? 0} in stock</p></div>
             </article>
           )) : <p className="empty-state">Your approved catalog will appear here.</p>}
         </div>
