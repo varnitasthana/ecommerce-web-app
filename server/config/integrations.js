@@ -1,7 +1,7 @@
-const isRealValue = (value) => Boolean(value && !/(your_|replace_|_here|example\.com)/i.test(value));
+const isRealValue = (value) => Boolean(value && !/(your_|replace_me|replace_|_here|example\.com|test_replace)/i.test(value));
 
 const integrationStatus = () => ({
-  payments: isRealValue(process.env.STRIPE_SECRET_KEY) && isRealValue(process.env.STRIPE_WEBHOOK_SECRET),
+  payments: isRealValue(process.env.RAZORPAY_KEY_ID) && isRealValue(process.env.RAZORPAY_KEY_SECRET),
   media: isRealValue(process.env.CLOUDINARY_CLOUD_NAME) && isRealValue(process.env.CLOUDINARY_API_KEY) && isRealValue(process.env.CLOUDINARY_API_SECRET),
   notifications: isRealValue(process.env.EMAIL_FROM) && isRealValue(process.env.EMAIL_API_KEY),
   shipping: isRealValue(process.env.SHIPPING_API_KEY) && isRealValue(process.env.SHIPPING_API_URL)
