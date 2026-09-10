@@ -5,6 +5,9 @@ import Products from './pages/Products';
 import ProductDetails from './pages/ProductDetails';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
+import VerifyEmail from './pages/VerifyEmail';
 import Cart from './pages/Cart';
 import Checkout from './pages/Checkout';
 import Orders from './pages/Orders';
@@ -365,8 +368,11 @@ function App() {
             <Route path="/" element={<Home addToCart={addToCart} />} />
             <Route path="/products" element={<Products addToCart={addToCart} />} />
             <Route path="/products/:id" element={<ProductDetails addToCart={addToCart} />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
+             <Route path="/login" element={<Login />} />
+             <Route path="/register" element={<Register />} />
+             <Route path="/forgot-password" element={<ForgotPassword />} />
+             <Route path="/reset-password" element={<ResetPassword />} />
+             <Route path="/verify-email" element={<VerifyEmail />} />
             <Route
               path="/cart"
               element={<Cart cart={cart} removeFromCart={removeFromCart} updateQuantity={updateQuantity} totalPrice={totalPrice} />}
