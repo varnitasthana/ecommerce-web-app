@@ -2,6 +2,7 @@ const mongoose = require("mongoose");
 
 const MONGO_URI = process.env.MONGO_URI;
 const DB_NAME = (process.env.MONGO_DB || "").trim() || undefined;
+const isTest = process.env.NODE_ENV === "test" || process.env.JEST_WORKER_ID !== undefined;
 
 const RETRY_DELAYS = [1000, 2000, 4000, 8000, 16000];
 const DEFAULT_SERVER_OPTIONS = {
@@ -9,7 +10,7 @@ const DEFAULT_SERVER_OPTIONS = {
   connectTimeoutMS: 15000,
   socketTimeoutMS: 45000,
   family: 4,
-  retryWrites: true,
+  retryWrites: !isTest,
   w: "majority"
 };
 
