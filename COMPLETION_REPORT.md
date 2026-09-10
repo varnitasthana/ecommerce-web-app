@@ -20,7 +20,7 @@ The ShopEase e-commerce application has been successfully upgraded to **producti
 | 5 | Customer Account | ✅ DONE | Profiles, addresses, password management, email prep |
 | 6 | Cart & Wishlist | ✅ DONE | Inherited from existing, ready for server sync |
 | 8 | Orders & Fulfillment | ✅ DONE | Full lifecycle states, tracking, safe ownership |
-| 9 | Returns & Refunds | ✅ DONE | Refund service, return workflow, Stripe integration |
+| 9 | Returns & Refunds | ✅ DONE | Refund service, return workflow, Razorpay integration |
 | 11 | Reviews & Ratings | ✅ DONE | Inherited, ready for enforcement |
 | 16 | Security Hardening | ✅ DONE | Rate limiting, validation, secret management |
 
@@ -67,7 +67,7 @@ Phases 4, 7, 10, 12-15, 17, 20-21, 23 have been architecturally prepared but int
 - Query injection prevention
 
 **Payment Security**
-- Stripe webhook signature verification
+- Razorpay webhook signature verification
 - Idempotent webhook processing (no duplicate charges)
 - Server-side price validation (prevents tampering)
 - Stock reservation with transaction rollback
@@ -87,13 +87,13 @@ Phases 4, 7, 10, 12-15, 17, 20-21, 23 have been architecturally prepared but int
 - No orphaned orders or over-sold inventory
 
 **Idempotent Webhooks** (NEW)
-- Stripe event ID tracking prevents duplicate processing
+- Razorpay event ID tracking prevents duplicate processing
 - Webhook failures don't corrupt order state
 - Automatic recovery on webhook retry
 - Comprehensive error logging
 
 **Refund Handling** (NEW)
-- Safe refund processing via Stripe API
+- Safe refund processing via Razorpay API
 - Automatic stock release on refund
 - Refund status tracking
 - Complete audit trail
@@ -257,8 +257,8 @@ BACKEND:
 // Order (4 indexes)
 { user: 1, createdAt: -1 }
 { status: 1, createdAt: -1 }
-{ stripeCheckoutSessionId: 1 }
-{ stripePaymentIntentId: 1 }
+{ razorpayOrderId: 1 }
+{ razorpayPaymentId: 1 }
 
 // Address (1 index)
 { user: 1, isDefault: 1 }
@@ -305,9 +305,9 @@ NODE_ENV=development
 PORT=5000
 MONGO_URI=mongodb+srv://...
 JWT_SECRET=...24+ characters...
-STRIPE_SECRET_KEY=sk_test_...
-STRIPE_WEBHOOK_SECRET=whsec_...
-STRIPE_CURRENCY=inr
+RAZORPAY_KEY_ID=your_test_key_id
+RAZORPAY_KEY_SECRET=your_test_key_secret
+RAZORPAY_WEBHOOK_SECRET=your_webhook_secret
 CLIENT_URL=http://localhost:5173
 CLOUDINARY_CLOUD_NAME=...
 CLOUDINARY_API_KEY=...
@@ -386,7 +386,7 @@ All changes are fully backward compatible:
 - [ ] Rollback plan documented
 
 **Deployment Steps**
-1. Deploy to staging with real Stripe test keys
+1. Deploy to staging with real Razorpay test keys
 2. Run smoke tests
 3. Verify search performance with large dataset
 4. Test payment flow end-to-end
@@ -527,7 +527,7 @@ All changes are fully backward compatible:
 The ShopEase e-commerce platform has been successfully transformed from a working MVP into a **production-ready enterprise application foundation**. 
 
 ### Key Achievements
-- ✅ **Payment System**: Transactional safety with Stripe idempotency
+- ✅ **Payment System**: Transactional safety with Razorpay idempotency
 - ✅ **Product Catalog**: 30+ fields with soft delete and smart pricing
 - ✅ **Scalable Discovery**: Full-text search, filtering, pagination, facets
 - ✅ **Customer Accounts**: Profiles, addresses, password management
