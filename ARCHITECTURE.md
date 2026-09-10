@@ -55,7 +55,7 @@ server/
 
 - `routes/`: declare endpoint paths, HTTP methods, and access middleware. Routes should not contain business logic.
 - `controllers/`: translate HTTP input into service/model operations and choose response status codes. They should not own reusable provider implementations.
-- `services/`: isolate Stripe, email, shipping, media, and other external systems from HTTP routes and database schema details.
+- `services/`: isolate Razorpay, email, shipping, media, and other external systems from HTTP routes and database schema details.
 - `models/`: define MongoDB documents, constraints, indexes, and relationships.
 - `middleware/`: cross-cutting HTTP behavior such as authentication, authorization, parsing errors, not-found responses, and production error formatting.
 - `validators/`: request shape and domain input rules that can be reused by controllers and future tests.
@@ -116,7 +116,7 @@ Mongoose models define the persistence contract:
 
 Controllers use models for reads/writes. Order line items copy product name and price so historical orders do not change when a catalog product changes.
 
-The current checkout reserves stock with conditional product updates before creating a Stripe session. Multi-item checkout transactions, abandoned-session cleanup, migrations, and seller/product ownership are future hardening work.
+The current checkout reserves stock with conditional product updates before creating a Razorpay order. Multi-item checkout transactions, abandoned-session cleanup, migrations, and seller/product ownership are future hardening work.
 
 ## Payment Flow
 
@@ -124,18 +124,18 @@ The current checkout reserves stock with conditional product updates before crea
 2. The payment controller loads products from MongoDB and ignores browser prices.
 3. Stock is conditionally reserved.
 4. A `pending_payment` order is created with the server-calculated total.
-5. Stripe-hosted Checkout is created with order metadata.
-6. The browser redirects to Stripe and never handles raw card details.
-7. Stripe sends a signed webhook to `/api/payments/webhook`.
-8. The webhook verifies the signature using the raw request body.
-9. A paid event changes the order to `confirmed`/`paid`; failure or expiry releases stock.
+5. A Razorpay order is created and returned to the frontend.
+6. The browser opens Razorpay Checkout and never handles raw card details.
+7. Razorpay sends a signed webhook to `/api/payments/webhook`.
+8. The frontend also verifies the payment signature server-side via `/api/payments/verify`.
+9. A successful verification or webhook changes the order to `confirmed`/`paid`; failure releases stock.
 10. A confirmation email is attempted through the email service.
 
-Stripe keys are environment-only. Placeholder values are reported as unconfigured by `config/integrations.js`. No browser success page is trusted as payment proof.
+Razorpay keys are environment-only. Placeholder values are reported as unconfigured by `config/integrations.js`. No browser success page is trusted as payment proof.
 
 ## External Services
 
-### Stripe
+### Razorpay
 
 Implemented behind `controllers/paymentController.js` and `routes/paymentRoutes.js`. Requires real test/live keys and a configured webhook secret. Refunds, reconciliation, and automated webhook tests remain future work.
 
