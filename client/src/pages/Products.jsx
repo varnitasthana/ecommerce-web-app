@@ -1,8 +1,11 @@
-import { useEffect, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { useEffect, useState, useMemo } from 'react';
+import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { FaFilter, FaSearch, FaShoppingCart } from 'react-icons/fa';
 import api from '../services/api';
 import Button from '../components/Button';
+import QuickViewModal from '../components/QuickViewModal';
+
+const MAX_COMPARE = 4;
 
 function Products({ addToCart }) {
   const [products, setProducts] = useState([]);
@@ -21,6 +24,21 @@ function Products({ addToCart }) {
   const [searchParams] = useSearchParams();
   const searchParamsString = searchParams.toString();
   const [quickViewProduct, setQuickViewProduct] = useState(null);
+  const [compareIds, setCompareIds] = useState([]);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    try {
+      const stored = JSON.parse(localStorage.getItem('compareList') || '[]');
+      setCompareIds(stored.slice(0, MAX_COMPARE));
+    } catch {
+      setCompareIds([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem('compareList', JSON.stringify(compareIds));
+  }, [compareIds]);
 
   useEffect(() => {
     const nextParams = new URLSearchParams(searchParamsString);
@@ -82,6 +100,24 @@ function Products({ addToCart }) {
   };
 
   const activeFiltersCount = [search, category !== 'all', brand !== 'all', minPrice, maxPrice, minRating, availability !== 'all'].filter(Boolean).length;
+
+  const toggleCompare = (productId) => {
+    setCompareIds((prev) => {
+      const id = String(productId);
+      if (prev.includes(id)) {
+        return prev.filter((item) => item !== id);
+      }
+      if (prev.length >= MAX_COMPARE) {
+        return prev;
+      }
+      return [...prev, id];
+    });
+  };
+
+  const goToCompare = () => {
+    if (compareIds.length < 2) return;
+    navigate(`/compare?ids=${compareIds.join(',')}`);
+  };
 
   const getProductBadge = (product, index) => {
     if (product.discount && product.discount > 20) return { text: `${product.discount}% OFF`, class: 'badge-sale' };
@@ -249,32 +285,73 @@ function Products({ addToCart }) {
           </div>
         )}
 
+        {/* COMPARE FLOATING BAR */}
+        {compareIds.length > 0 && (
+          <div style={{
+            position: 'sticky',
+            bottom: '1.5rem',
+            zIndex: 80,
+            marginBottom: '1.5rem',
+            background: 'var(--primary)',
+            color: 'white',
+            padding: '1rem 1.5rem',
+            borderRadius: 'var(--radius-lg)',
+            boxShadow: 'var(--shadow-xl)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: '1rem'
+          }}>
+            <div>
+              <strong>Compare ({compareIds.length}/{MAX_COMPARE})</strong>
+              <span style={{ marginLeft: '0.75rem', fontSize: '0.85rem', opacity: 0.9 }}>{compareIds.length < 2 ? 'Select at least 2 products to compare' : 'Ready to compare'}</span>
+            </div>
+            <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+              <button onClick={() => setCompareIds([])} style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.4)', color: 'white', borderRadius: 'var(--radius-sm)', padding: '0.4rem 0.75rem', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600 }}>Clear</button>
+              <Button onClick={goToCompare} disabled={compareIds.length < 2} size="sm" style={{ background: 'var(--bg-primary)', color: 'var(--primary)', boxShadow: 'var(--shadow-md)' }}>
+                Compare Now
+              </Button>
+            </div>
+          </div>
+        )}
+
         {/* PRODUCT GRID */}
         {products.length > 0 ? (
           <div className="product-grid">
             {products.map((product, idx) => {
               const badge = getProductBadge(product, idx);
               const productId = product._id || product.id;
+              const isChecked = compareIds.includes(String(productId));
               return (
-                <div className="product-card" key={productId}>
-                  <div className="product-card-image">
-                    <Link to={`/products/${productId}`} style={{ textDecoration: 'none', color: 'inherit' }}>
-                      <img src={product.image || 'https://via.placeholder.com/240x240'} alt={product.name} loading="lazy" />
-                    </Link>
-                    {badge && <div className={`product-badge ${badge.class}`}>{badge.text}</div>}
-                    <button
-                      className="quick-view-btn"
-                      onClick={() => openQuickView(product)}
-                      aria-label="Quick view"
-                    >
-                      👁 Quick View
-                    </button>
-                  </div>
-                  <div className="product-card-body">
-                    <p>{product.brand || 'Premium Select'}</p>
-                    <Link to={`/products/${productId}`} style={{ textDecoration: 'none', color: 'inherit' }}>
-                      <h3>{product.name}</h3>
-                    </Link>
+                  <div className="product-card" key={productId} style={{ position: 'relative' }}>
+                    <div className="product-card-image">
+                      <Link to={`/products/${productId}`} style={{ textDecoration: 'none', color: 'inherit' }}>
+                        <img src={product.image || 'https://via.placeholder.com/240x240'} alt={product.name || 'Product'} loading="lazy" />
+                      </Link>
+                      {badge && <div className={`product-badge ${badge.class}`}>{badge.text}</div>}
+                      <label style={{ position: 'absolute', top: '0.5rem', left: '0.5rem', display: 'inline-flex', alignItems: 'center', gap: '0.35rem', background: 'var(--bg-primary)', padding: '0.35rem 0.6rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer', zIndex: 5, boxShadow: 'var(--shadow-sm)', userSelect: 'none', color: 'var(--text-primary)' }}>
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={() => toggleCompare(productId)}
+                          style={{ cursor: 'pointer', width: '14px', height: '14px', accentColor: 'var(--primary)' }}
+                        />
+                        Compare
+                      </label>
+                      <button
+                        className="quick-view-btn"
+                        onClick={() => openQuickView(product)}
+                        aria-label="Quick view"
+                      >
+                        👁 Quick View
+                      </button>
+                    </div>
+                    <div className="product-card-body">
+                      <p>{product.brand || 'ShopEase'}</p>
+                      <Link to={`/products/${productId}`} style={{ textDecoration: 'none', color: 'inherit' }}>
+                        <h3>{product.name || 'Product'}</h3>
+                      </Link>
                     <div className="product-rating">
                       <span className="rating-stars">★★★★★</span>
                       <span className="rating-count">{product.rating ? Math.round(product.rating * 10) / 10 : '4.5'}</span>
@@ -342,54 +419,7 @@ function Products({ addToCart }) {
 
       {/* QUICK VIEW MODAL */}
       {quickViewProduct && (
-        <div className="modal-overlay" onClick={closeQuickView}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ position: 'relative' }}>
-            <button className="modal-close" onClick={closeQuickView}>✕</button>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', padding: '2rem' }}>
-              <div>
-                <div className="product-image-wrapper" style={{ marginBottom: '1rem' }}>
-                  <img src={quickViewProduct.image || 'https://via.placeholder.com/500x500'} alt={quickViewProduct.name} />
-                </div>
-                <div className="product-trust-grid">
-                  {[['✓', 'Verified'], ['🔒', 'Secure'], ['✓', 'Authentic']].map(([icon, label]) => (
-                    <div key={label} className="product-trust-item">
-                      <div className="product-trust-icon">{icon}</div>
-                      {label}
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <p className="product-brand-category">{quickViewProduct.brand || 'Premium Select'} · {quickViewProduct.category}</p>
-                <h1 className="product-name" style={{ fontSize: '1.5rem' }}>{quickViewProduct.name}</h1>
-                <div className="product-rating-row" style={{ border: 'none', padding: 0, margin: '0.75rem 0' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <span className="product-rating-stars">★★★★★</span>
-                    <span className="product-rating-value">{quickViewProduct.rating ? Math.round(quickViewProduct.rating * 10) / 10 : '4.5'}</span>
-                  </div>
-                </div>
-                <div className="product-price-row" style={{ marginBottom: '1rem' }}>
-                  <span className="product-price-current-lg" style={{ fontSize: '1.5rem' }}>₹{quickViewProduct.price}</span>
-                  {quickViewProduct.compareAtPrice && (
-                    <>
-                      <span className="product-price-original-lg">₹{quickViewProduct.compareAtPrice}</span>
-                      <span className="product-price-save-badge">Save ₹{quickViewProduct.compareAtPrice - quickViewProduct.price}</span>
-                    </>
-                  )}
-                </div>
-                <p className="product-stock-status">✓ {quickViewProduct.stock > 0 ? 'In Stock' : 'Out of Stock'}</p>
-                <div className="product-action-row" style={{ marginTop: '1rem' }}>
-                  <Button onClick={() => { addToCart(quickViewProduct, 1); closeQuickView(); }} size="lg" style={{ flex: 1 }}>
-                    <FaShoppingCart /> Add to Cart
-                  </Button>
-                  <Link to={`/products/${quickViewProduct._id || quickViewProduct.id}`} style={{ textDecoration: 'none' }}>
-                    <Button variant="outline" size="lg">View Details</Button>
-                  </Link>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+        <QuickViewModal productId={quickViewProduct._id || quickViewProduct.id} onClose={closeQuickView} />
       )}
     </section>
   );
