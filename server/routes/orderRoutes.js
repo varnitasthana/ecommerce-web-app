@@ -1,6 +1,6 @@
 const express = require("express");
 const { createOrder, getMyOrders, getOrderById, getOrderTracking, requestRefund, cancelOrder } = require("../controllers/orderController");
-const { protect } = require("../middleware/authMiddleware");
+const { protect, authenticateUser } = require("../middleware/authMiddleware");
 
 const router = express.Router();
 
@@ -12,4 +12,12 @@ router.get("/:id/tracking", getOrderTracking);
 router.post("/:id/refund", requestRefund);
 router.post("/:id/cancel", cancelOrder);
 
-module.exports = router;
+const guestRouter = express.Router();
+guestRouter.get("/:id", getOrderById);
+guestRouter.get("/:id/tracking", getOrderTracking);
+guestRouter.use((req, res, next) => {
+  req.isGuest = true;
+  next();
+});
+
+module.exports = { default: router, guest: guestRouter };
