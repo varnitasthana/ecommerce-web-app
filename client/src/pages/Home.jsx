@@ -60,9 +60,20 @@ function Home({ addToCart }) {
   const featuredProducts = products.slice(0, 4);
   const trendingProducts = products.slice(4, 8);
   const bestSellerProducts = products.slice(0, 6);
+  const dealsProducts = products
+    .filter((p) => p.compareAtPrice && p.compareAtPrice > p.price)
+    .map((p) => ({ ...p, discount: Math.round(((p.compareAtPrice - p.price) / p.compareAtPrice) * 100) }))
+    .filter((p) => p.discount > 15)
+    .slice(0, 4);
+
+  const getProductDiscount = (product) => {
+    if (!product.compareAtPrice || product.compareAtPrice <= product.price) return 0;
+    return Math.round(((product.compareAtPrice - product.price) / product.compareAtPrice) * 100);
+  };
 
   const getProductBadge = (product, index) => {
-    if (product.discount && product.discount > 20) return { text: `${product.discount}% OFF`, class: 'badge-sale' };
+    const discount = getProductDiscount(product);
+    if (discount > 20) return { text: `${discount}% OFF`, class: 'badge-sale' };
     if (index % 3 === 0) return { text: 'TRENDING', class: 'badge-hot' };
     if (!product.rating || product.rating < 3) return { text: 'NEW', class: 'badge-new' };
     return null;
@@ -80,11 +91,20 @@ function Home({ addToCart }) {
   };
 
   const renderProductCard = (product, index) => {
+    if (!product || !product._id) return null;
     const badge = getProductBadge(product, index);
+    const name = product.name || 'Premium Product';
+    const brand = product.brand || 'ShopEase';
+    const price = product.price ?? 0;
+    const image = product.image || product.images?.[0] || 'https://via.placeholder.com/300x240';
+    const rating = typeof product.rating === 'number' ? product.rating : 0;
+    const compareAtPrice = product.compareAtPrice || 0;
+    const discount = compareAtPrice > price ? Math.round(((compareAtPrice - price) / compareAtPrice) * 100) : 0;
+
     return (
       <div className="product-card reveal" key={product._id || product.id}>
         <div className="product-card-image">
-          <img src={product.image || 'https://via.placeholder.com/300x240'} alt={product.name} loading="lazy" />
+          <img src={image} alt={name} loading="lazy" />
           {badge && (
             <div className={`product-badge ${badge.class}`}>
               {badge.text}
@@ -99,22 +119,22 @@ function Home({ addToCart }) {
           </button>
         </div>
         <div className="product-card-body">
-          <p>{product.brand || 'Premium Select'}</p>
-          <h3>{product.name}</h3>
+          <p>{brand}</p>
+          <h3>{name}</h3>
 
           <div className="product-rating">
             <span className="rating-stars">★★★★★</span>
-            <span className="rating-count">{product.rating ? Math.round(product.rating * 10) / 10 : '4.5'}</span>
+            <span className="rating-count">{rating ? Math.round(rating * 10) / 10 : '4.5'}</span>
             <span style={{ color: 'var(--text-tertiary)', fontSize: '0.8rem' }}>(128)</span>
           </div>
 
           <div className="product-meta">
             <div className="product-price">
-              <span className="product-price-current">₹{product.price}</span>
-              {product.compareAtPrice && product.compareAtPrice > product.price && (
+              <span className="product-price-current">₹{price}</span>
+              {compareAtPrice > price && (
                 <>
-                  <span className="product-price-original">₹{product.compareAtPrice}</span>
-                  <span className="product-discount">{Math.round(((product.compareAtPrice - product.price) / product.compareAtPrice) * 100)}% off</span>
+                  <span className="product-price-original">₹{compareAtPrice}</span>
+                  <span className="product-discount">{discount}% off</span>
                 </>
               )}
             </div>
@@ -129,6 +149,7 @@ function Home({ addToCart }) {
 
   const featuredRef = useReveal();
   const trendingRef = useReveal();
+  const dealsRef = useReveal();
   const bestSellerRef = useReveal();
   const infoRef = useReveal();
 
@@ -222,11 +243,27 @@ function Home({ addToCart }) {
         <div style={{ position: 'relative', zIndex: 1 }}>
           <h2 style={{ margin: '0 0 0.5rem', fontSize: '2rem', fontWeight: 700 }}>🔥 Flash Sale</h2>
           <p style={{ margin: '0 0 1.25rem', fontSize: '1.1rem', opacity: 0.95 }}>Get up to 50% off on selected items - Limited time offer!</p>
-          <Link className="primary-btn" to="/products?sort=price-low" style={{ background: 'white', color: '#ff6b00', boxShadow: 'var(--shadow-md)' }}>
+          <Link className="primary-btn" to="/products?sort=price-low" style={{ background: 'var(--bg-primary)', color: '#ff6b00', boxShadow: 'var(--shadow-md)' }}>
             Shop Flash Sale
           </Link>
         </div>
       </div>
+
+      {/* DEALS OF THE DAY */}
+      {dealsProducts.length > 0 && (
+        <>
+          <div className="section-heading home-section-heading" ref={dealsRef}>
+            <div>
+              <p className="eyebrow">⏰ Limited Time</p>
+              <h2>Deals of the Day</h2>
+            </div>
+            <Link className="text-link" to="/products?sort=price-low">See all deals →</Link>
+          </div>
+          <div className="product-grid" ref={dealsRef}>
+            {dealsProducts.map((product, idx) => renderProductCard(product, idx))}
+          </div>
+        </>
+      )}
 
       {/* TRENDING PRODUCTS SECTION */}
       <div className="section-heading home-section-heading" ref={trendingRef}>
@@ -333,28 +370,36 @@ function Home({ addToCart }) {
             </div>
           </div>
           <div className="product-grid">
-            {recentlyViewed.slice(0, 4).map((product, _idx) => (
-              <div className="product-card reveal" key={`recent-${product._id || product.id}`}>
-                <Link to={`/products/${product._id || product.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
-                  <div className="product-card-image">
-                    <img src={product.image || 'https://via.placeholder.com/300x240'} alt={product.name} loading="lazy" />
-                  </div>
-                  <div className="product-card-body">
-                    <p>{product.brand || 'Premium Select'}</p>
-                    <h3>{product.name}</h3>
-                    <div className="product-rating">
-                      <span className="rating-stars">★★★★★</span>
-                      <span className="rating-count">{product.rating ? Math.round(product.rating * 10) / 10 : '4.5'}</span>
+            {recentlyViewed.slice(0, 4).map((product, _idx) => {
+              if (!product || !product._id) return null;
+              const name = product.name || 'Product';
+              const brand = product.brand || 'ShopEase';
+              const price = product.price ?? 0;
+              const image = product.image || product.images?.[0] || 'https://via.placeholder.com/300x240';
+              const rating = typeof product.rating === 'number' ? product.rating : 0;
+              return (
+                <div className="product-card reveal" key={`recent-${product._id || product.id}`}>
+                  <Link to={`/products/${product._id || product.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
+                    <div className="product-card-image">
+                      <img src={image} alt={name} loading="lazy" />
                     </div>
-                    <div className="product-meta">
-                      <div className="product-price">
-                        <span className="product-price-current">₹{product.price}</span>
+                    <div className="product-card-body">
+                      <p>{brand}</p>
+                      <h3>{name}</h3>
+                      <div className="product-rating">
+                        <span className="rating-stars">★★★★★</span>
+                        <span className="rating-count">{rating ? Math.round(rating * 10) / 10 : '4.5'}</span>
+                      </div>
+                      <div className="product-meta">
+                        <div className="product-price">
+                          <span className="product-price-current">₹{price}</span>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </Link>
-              </div>
-            ))}
+                  </Link>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
@@ -369,7 +414,7 @@ function Home({ addToCart }) {
         <div style={{
           padding: '1.5rem',
           borderRadius: 'var(--radius-lg)',
-          background: 'white',
+          background: 'var(--bg-primary)',
           border: '1px solid var(--border)',
           textAlign: 'center',
           transition: 'all 0.3s ease'
@@ -382,7 +427,7 @@ function Home({ addToCart }) {
         <div style={{
           padding: '1.5rem',
           borderRadius: 'var(--radius-lg)',
-          background: 'white',
+          background: 'var(--bg-primary)',
           border: '1px solid var(--border)',
           textAlign: 'center',
           transition: 'all 0.3s ease'
@@ -395,7 +440,7 @@ function Home({ addToCart }) {
         <div style={{
           padding: '1.5rem',
           borderRadius: 'var(--radius-lg)',
-          background: 'white',
+          background: 'var(--bg-primary)',
           border: '1px solid var(--border)',
           textAlign: 'center',
           transition: 'all 0.3s ease'
