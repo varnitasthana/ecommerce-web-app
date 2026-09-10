@@ -58,7 +58,7 @@ production-readiness claim.
 - [ ] Checkout session creation
 - [ ] Stock reservation
 - [ ] Stock release on payment failure
-- [ ] Stripe webhook idempotency
+- [ ] Razorpay webhook idempotency
 - [ ] Refund processing
 - [ ] Order state transitions
 
@@ -127,7 +127,7 @@ describe("Product API", () => {
 - Factory functions for test data creation
 
 ### External Services
-- Mock Stripe API responses
+- Mock Razorpay API responses
 - Mock email service
 - Mock shipping provider
 
@@ -142,7 +142,7 @@ jest.mock("../services/emailService", () => ({
 
 The repository workflow in `.github/workflows/ci.yml` runs backend tests against
 MongoDB Memory Server, frontend lint, and the frontend production build. It
-does not require production secrets or Stripe credentials.
+does not require production secrets or Razorpay credentials.
 
 ## Performance Testing
 
@@ -159,7 +159,7 @@ does not require production secrets or Stripe credentials.
 
 ## Current Limitations
 
-- Stripe checkout, webhooks, and refunds are not automated because no Stripe test credentials or mock contract suite is configured.
+- Razorpay checkout, webhooks, and refunds are not automated because no Razorpay test credentials or mock contract suite is configured.
 - Seller product ownership routes are not tested because the current API exposes admin-only product mutation routes, not seller-scoped product management routes.
 - Frontend component tests and Playwright E2E tests are not configured yet.
 
