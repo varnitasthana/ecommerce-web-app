@@ -8,12 +8,14 @@ import Button from '../components/Button';
 function Login() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { login } = useAuth();
+  const { login, user } = useAuth();
   const [form, setForm] = useState({ email: '', password: '', remember: false });
   const [message, setMessage] = useState('');
   const [messageType, setMessageType] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [resending, setResending] = useState(false);
+  const [needsVerification, setNeedsVerification] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -23,6 +25,12 @@ function Login() {
       setMessageType('success');
     }
   }, [location.search]);
+
+  useEffect(() => {
+    if (user && !user.emailVerified) {
+      setNeedsVerification(true);
+    }
+  }, [user]);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -42,6 +50,10 @@ function Login() {
       });
 
       login(data);
+      const loggedUser = data.user;
+      if (loggedUser && !loggedUser.emailVerified) {
+        setNeedsVerification(true);
+      }
       navigate(location.state?.from || '/');
     } catch (error) {
       setMessage(error.response?.data?.message || error.message || 'Login failed');
@@ -50,9 +62,34 @@ function Login() {
     }
   };
 
+  const resendVerification = async () => {
+    setResending(true);
+    setMessage('');
+    setMessageType('');
+    try {
+      await api.post('/api/auth/tokens/resend-verification', { email: form.email });
+      setMessage('Verification email sent! Please check your inbox.');
+      setMessageType('success');
+    } catch {
+      setMessage('Unable to send verification email. Please try again.');
+      setMessageType('error');
+    } finally {
+      setResending(false);
+    }
+  };
+
   return (
     <section className="page-block auth-page">
       <div className="auth-box">
+        {needsVerification && (
+          <div style={{ marginBottom: '1rem', padding: '0.75rem 1rem', borderRadius: 'var(--radius-md)', background: 'var(--warning-light)', border: '1px solid var(--warning)', color: 'var(--warning)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.75rem' }}>
+            <span style={{ fontSize: '0.9rem', fontWeight: 600 }}>Please verify your email. Didn't receive it?</span>
+            <button type="button" onClick={resendVerification} disabled={resending} style={{ background: 'var(--warning)', color: 'white', border: 'none', borderRadius: 'var(--radius-sm)', padding: '0.4rem 0.9rem', cursor: 'pointer', fontWeight: 600, fontSize: '0.85rem', opacity: resending ? 0.7 : 1 }}>
+              {resending ? 'Sending...' : 'Resend'}
+            </button>
+          </div>
+        )}
+
         <h2>Welcome back</h2>
         <p className="muted" style={{ marginBottom: '1.5rem' }}>Sign in to your ShopEase account</p>
 
