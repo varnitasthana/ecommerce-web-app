@@ -13,7 +13,12 @@ const wishlistSchema = new mongoose.Schema(
         type: mongoose.Schema.Types.ObjectId,
         ref: "Product"
       }
-    ]
+    ],
+    priceAlerts: {
+      type: Map,
+      of: Boolean,
+      default: new Map()
+    }
   },
   { timestamps: true }
 );
