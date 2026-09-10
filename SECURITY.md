@@ -33,7 +33,7 @@ This document outlines the security measures implemented in the ShopEase e-comme
 ### Sensitive Data
 - Passwords never logged or exposed
 - JWT tokens never logged in plain text
-- Credit card details handled by Stripe only (never stored)
+- Credit card and bank details handled by Razorpay only (never stored)
 - Personal data fields excluded from public API responses
 
 ### Input Validation
@@ -50,12 +50,12 @@ This document outlines the security measures implemented in the ShopEase e-comme
 - Historical order data preserved unchanged
 
 ## Payment Security
+### Razorpay Integration
 
-### Stripe Integration
-- Stripe API key stored only in server environment variables
+- Razorpay API key stored only in server environment variables
 - Webhook signature verification using raw request body
 - Webhook idempotency check prevents duplicate payment processing
-- Stripe hosted checkout - card details never touch the server
+- Razorpay hosted checkout - card/bank details never touch the server
 - Stock reservation with transaction rollback on payment failure
 
 ### Stock Management
