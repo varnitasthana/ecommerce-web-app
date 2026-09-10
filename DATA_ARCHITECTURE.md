@@ -47,7 +47,7 @@ Production hardening recommendation: move the browser token to secure, httpOnly,
 - Admins can manage products through `/admin` and `/api/products`.
 - Sellers can manage only their own products through `/seller` and `/api/sellers/products`.
 - Customers browse `/products` and `/api/products`.
-- Customers create orders through `/api/orders` or the Stripe checkout flow.
+- Customers create orders through `/api/orders` or the Razorpay checkout flow.
 - Admin overview metrics are available at `/api/admin/overview` and are restricted to admins.
 
 External payment, media, email, and shipping data is not stored as credentials in MongoDB. Those services are configured through environment variables and should use provider dashboards and secret managers in production.
