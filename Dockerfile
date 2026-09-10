@@ -31,8 +31,6 @@ COPY --from=builder /app/server/utils ./server/utils
 COPY --from=builder /app/server/validators ./server/validators
 COPY --from=builder /app/server/scripts ./server/scripts
 COPY --from=builder /app/client/dist ./client/dist
-COPY --from=builder /app/server/.env.example ./server/.env.example
-COPY --from=builder /app/.env.example ./.env.example
 
 RUN mkdir -p uploads logs
 
