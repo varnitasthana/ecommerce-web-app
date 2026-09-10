@@ -2,12 +2,17 @@ import { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { FaTrash, FaRegHeart } from 'react-icons/fa';
 import Button from '../components/Button';
+import Breadcrumb from '../components/Breadcrumb';
 
 const FREE_SHIPPING_THRESHOLD = 999;
 
 function Cart({ cart, removeFromCart, updateQuantity, totalPrice }) {
   const [coupon, setCoupon] = useState('');
   const [saveForLater, setSaveForLater] = useState([]);
+
+  const shipping = totalPrice >= FREE_SHIPPING_THRESHOLD ? 0 : 49;
+  const tax = Math.round(totalPrice * 0.18);
+  const total = totalPrice + shipping + tax;
 
   const handleSaveForLater = (item) => {
     setSaveForLater((prev) => {
@@ -55,6 +60,7 @@ function Cart({ cart, removeFromCart, updateQuantity, totalPrice }) {
 
   return (
     <section className="cart-page">
+      <Breadcrumb items={[{ label: 'Home', path: '/' }, { label: 'Cart' }]} />
       {/* CART ITEMS */}
       <div className="cart-items-column">
         {cart.length > 0 && (
@@ -78,7 +84,7 @@ function Cart({ cart, removeFromCart, updateQuantity, totalPrice }) {
                 <p className="shipping-progress-text">
                   {totalPrice >= FREE_SHIPPING_THRESHOLD
                     ? '🎉 You qualify for free shipping!'
-                    : `You've earned ₹{totalPrice} — only ₹{remainingForFreeShipping} away from free delivery!`}
+                    : `You've earned ₹${totalPrice} — only ₹${remainingForFreeShipping} away from free delivery!`}
                 </p>
               </div>
             )}
@@ -96,7 +102,7 @@ function Cart({ cart, removeFromCart, updateQuantity, totalPrice }) {
                   <Link to={`/products/${item._id || item.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
                     <img
                       src={item.image || 'https://via.placeholder.com/100x100'}
-                      alt={item.name}
+                      alt={item.name || 'Product'}
                       className="cart-item-image"
                     />
                   </Link>
@@ -104,11 +110,11 @@ function Cart({ cart, removeFromCart, updateQuantity, totalPrice }) {
                   {/* PRODUCT DETAILS */}
                   <div className="cart-item-details">
                     <Link to={`/products/${item._id || item.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
-                      <h3 style={{ transition: 'color 0.2s ease' }}>{item.name}</h3>
+                      <h3 style={{ transition: 'color 0.2s ease' }}>{item.name || 'Product'}</h3>
                     </Link>
-                    <p className="cart-item-brand">{item.brand || 'Premium Select'}</p>
+                    <p className="cart-item-brand">{item.brand || 'ShopEase'}</p>
                     <div className="cart-item-price">
-                      <span className="cart-item-price-current">₹{item.price}</span>
+                      <span className="cart-item-price-current">₹{item.price ?? 0}</span>
                       {item.compareAtPrice && item.compareAtPrice > item.price && (
                         <>
                           <span className="cart-item-price-original">₹{item.compareAtPrice}</span>
@@ -177,13 +183,13 @@ function Cart({ cart, removeFromCart, updateQuantity, totalPrice }) {
               {saveForLater.map((item) => (
                 <div className="save-for-later-item" key={item._id || item.id}>
                   <Link to={`/products/${item._id || item.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
-                    <img src={item.image || 'https://via.placeholder.com/48x48'} alt={item.name} />
+                    <img src={item.image || 'https://via.placeholder.com/48x48'} alt={item.name || 'Product'} />
                   </Link>
                   <div className="save-for-later-item-info">
                     <Link to={`/products/${item._id || item.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
-                      <h4>{item.name}</h4>
+                      <h4>{item.name || 'Product'}</h4>
                     </Link>
-                    <span>₹{item.price}</span>
+                    <span>₹{item.price ?? 0}</span>
                   </div>
                   <Button size="sm" onClick={() => handleMoveToCart(item)} style={{ flexShrink: 0 }}>
                     Move to Cart
@@ -210,7 +216,7 @@ function Cart({ cart, removeFromCart, updateQuantity, totalPrice }) {
               <div className="cart-summary-row">
                 <span>Shipping</span>
                 <span className="cart-summary-row-savings">
-                  {totalPrice >= FREE_SHIPPING_THRESHOLD ? 'FREE' : `₹${Math.max(0, Math.round(totalPrice * 0.05))}`}
+                  {shipping === 0 ? 'FREE' : `₹${shipping}`}
                 </span>
               </div>
               {savings > 0 && (
@@ -221,7 +227,7 @@ function Cart({ cart, removeFromCart, updateQuantity, totalPrice }) {
               )}
               <div className="cart-summary-row">
                 <span>Tax (18%)</span>
-                <span>₹{Math.round(totalPrice * 0.18)}</span>
+                <span>₹{tax}</span>
               </div>
             </div>
 
@@ -229,7 +235,7 @@ function Cart({ cart, removeFromCart, updateQuantity, totalPrice }) {
             <div className="cart-summary-total-row">
               <span className="cart-summary-total-label">Total:</span>
               <span className="cart-summary-total-value">
-                ₹{totalPrice + Math.round(totalPrice * 0.18) + (totalPrice >= FREE_SHIPPING_THRESHOLD ? 0 : Math.max(0, Math.round(totalPrice * 0.05)))}
+                ₹{total}
               </span>
             </div>
 
