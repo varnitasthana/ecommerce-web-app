@@ -3,7 +3,7 @@ import { useState } from 'react';
 const faqs = [
   ['Where is my order?', 'Sign in and open Orders to view payment and fulfilment status. Delivery estimates appear on the order confirmation.'],
   ['How do returns work?', 'Open our Returns and refunds policy, then contact support with your order number and reason for return.'],
-  ['Is checkout secure?', 'Payments are completed on Stripe-hosted Checkout. ShopEase does not collect or store your card number.'],
+  ['Is checkout secure?', 'Payments are completed on Razorpay-hosted Checkout. ShopEase does not collect or store your card or bank details.'],
   ['Can I sell on ShopEase?', 'Use Sell with us to submit your brand, catalog, and contact details for partnership review.']
 ];
 
