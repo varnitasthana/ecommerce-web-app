@@ -1,25 +1,41 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import api from '../services/api';
 import Button from '../components/Button';
+import { formatDate, formatShortDate, formatCurrency } from '../utils/formatters';
 
 function OrderConfirmation() {
   const [searchParams] = useSearchParams();
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [verifying, setVerifying] = useState(false);
 
-  const sessionId = searchParams.get('session_id');
   const orderId = searchParams.get('orderId');
+  const razorpayPaymentId = searchParams.get('razorpay_payment_id');
+  const razorpayOrderId = searchParams.get('razorpay_order_id');
 
   useEffect(() => {
     const loadOrder = async () => {
       try {
         let targetOrderId = orderId;
 
-        if (!targetOrderId && sessionId) {
-          const { data } = await api.get(`/payments/session?session_id=${sessionId}`);
-          targetOrderId = data.orderId;
+        if (!targetOrderId && razorpayOrderId && razorpayPaymentId) {
+          setVerifying(true);
+          try {
+            const { data } = await api.post('/payments/verify', {
+              razorpay_order_id: razorpayOrderId,
+              razorpay_payment_id: razorpayPaymentId,
+              razorpay_signature: searchParams.get('razorpay_signature') || ''
+            });
+            targetOrderId = data.orderId;
+          } catch (err) {
+            setError(err.response?.data?.message || 'Payment verification failed. If payment was made, please contact support.');
+            setLoading(false);
+            setVerifying(false);
+            return;
+          }
+          setVerifying(false);
         }
 
         if (!targetOrderId) {
@@ -38,13 +54,13 @@ function OrderConfirmation() {
     };
 
     loadOrder();
-  }, [sessionId, orderId]);
+  }, [orderId, razorpayOrderId, razorpayPaymentId, searchParams]);
 
-  if (loading) {
+  if (loading || verifying) {
     return (
       <section className="page-block text-center" style={{ padding: '4rem 2rem' }}>
         <div className="skeleton-card" style={{ maxWidth: '400px', margin: '0 auto', height: '200px' }} />
-        <p className="muted" style={{ marginTop: '1rem' }}>Loading order confirmation...</p>
+        <p className="muted" style={{ marginTop: '1rem' }}>{verifying ? 'Verifying payment...' : 'Loading order confirmation...'}</p>
       </section>
     );
   }
@@ -70,17 +86,34 @@ function OrderConfirmation() {
   const tax = order.taxAmount || 0;
   const total = order.total || subtotal + shipping + tax;
 
+  const estimatedDelivery = useMemo(() => {
+    const base = new Date(order.createdAt || Date.now());
+    const days = order.estimatedDeliveryDays || 4;
+    const delivery = new Date(base);
+    delivery.setDate(base.getDate() + days);
+    return delivery;
+  }, [order]);
+
+  const formattedDelivery = estimatedDelivery ? formatShortDate(estimatedDelivery) : 'N/A';
+
   return (
     <section className="order-confirmation-page">
       <div className="card order-confirmation-card" style={{ marginBottom: '2rem', border: 'none', background: 'linear-gradient(135deg, #e6f2ff 0%, #f0f2f5 100%)' }}>
-        <div className="order-confirmation-icon">✅</div>
+        <div style={{ fontSize: '4rem', marginBottom: '0.75rem', animation: 'bounceIn 0.6s ease' }}>🎉</div>
         <h1 className="order-confirmation-title">Order confirmed!</h1>
         <p className="muted" style={{ fontSize: '1rem', maxWidth: '500px', margin: '0 auto' }}>
           Thank you for your purchase. We've received your order and will begin processing it soon.
         </p>
+        <div style={{ marginTop: '1.25rem', padding: '1rem', background: 'var(--bg-primary)', borderRadius: 'var(--radius-md)', display: 'inline-flex', alignItems: 'center', gap: '0.75rem', boxShadow: 'var(--shadow-sm)' }}>
+          <span style={{ fontSize: '1.5rem' }}>🚚</span>
+          <div style={{ textAlign: 'left' }}>
+            <p style={{ margin: 0, fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.05rem', color: 'var(--text-tertiary)', fontWeight: 600 }}>Estimated Delivery</p>
+            <p style={{ margin: '0.25rem 0 0', fontWeight: 700, color: 'var(--text-primary)', fontSize: '0.95rem' }}>{formattedDelivery}</p>
+          </div>
+        </div>
         <div className="order-confirmation-actions" style={{ marginTop: '1.5rem' }}>
-          <Button to={`/orders/${order._id}`} size="lg">View order details</Button>
-          <Button to="/products" variant="secondary" size="lg">Continue shopping</Button>
+          {order._id && <Button to={`/orders/${order._id}`} size="lg">Track Order</Button>}
+          <Button to="/products" variant="secondary" size="lg">Continue Shopping</Button>
         </div>
       </div>
 
@@ -92,7 +125,7 @@ function OrderConfirmation() {
           </div>
           <div style={{ textAlign: 'right' }}>
             <p className="muted" style={{ marginBottom: '0.25rem' }}>Placed on</p>
-            <p style={{ margin: 0, fontWeight: '600' }}>{new Date(order.createdAt).toLocaleDateString('en-IN', { dateStyle: 'medium' })}</p>
+            <p style={{ margin: 0, fontWeight: '600' }}>{formatDate(order.createdAt)}</p>
           </div>
         </div>
 
@@ -141,7 +174,7 @@ function OrderConfirmation() {
           </div>
           <div style={{ textAlign: 'right' }}>
             <p className="order-detail-meta-label" style={{ marginBottom: '0.25rem', fontSize: '0.85rem' }}>Estimated delivery</p>
-            <p style={{ margin: 0, fontWeight: '600' }}>4-5 business days</p>
+            <p style={{ margin: 0, fontWeight: '600' }}>{formattedDelivery}</p>
           </div>
         </div>
       </div>
