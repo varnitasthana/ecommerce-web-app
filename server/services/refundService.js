@@ -1,17 +1,11 @@
-const Stripe = require("stripe");
+const Razorpay = require("razorpay");
 const Order = require("../models/Order");
 const Product = require("../models/Product");
-
-const getStripe = () => {
-  if (!process.env.STRIPE_SECRET_KEY) {
-    throw new Error("Stripe is not configured");
-  }
-  return new Stripe(process.env.STRIPE_SECRET_KEY);
-};
+const { getRazorpay } = require("../config/razorpay");
 
 const processRefund = async (orderId, reason = null) => {
   const order = await Order.findById(orderId);
-  
+
   if (!order) {
     throw Object.assign(
       new Error("Order not found"),
@@ -33,19 +27,21 @@ const processRefund = async (orderId, reason = null) => {
     );
   }
 
-  if (!order.stripePaymentIntentId) {
+  if (!order.razorpayPaymentId) {
     throw Object.assign(
-      new Error("Order has no payment intent ID for refund"),
+      new Error("Order has no Razorpay payment ID for refund"),
       { statusCode: 400 }
     );
   }
 
   try {
-    const stripe = getStripe();
-    const refund = await stripe.refunds.create({
-      payment_intent: order.stripePaymentIntentId,
+    const razorpay = getRazorpay();
+    const refund = await razorpay.refunds.create({
+      payment_id: order.razorpayPaymentId,
       amount: Math.round(order.total * 100),
-      reason: "requested_by_customer"
+      notes: {
+        reason: reason || "Customer requested refund"
+      }
     });
 
     order.refundStatus = "processed";
@@ -53,7 +49,7 @@ const processRefund = async (orderId, reason = null) => {
     order.refundProcessedAt = new Date();
     order.paymentStatus = "refunded";
     order.refundReason = reason || "Customer requested refund";
-    
+
     await order.save();
 
     return {
@@ -63,7 +59,7 @@ const processRefund = async (orderId, reason = null) => {
       status: "processed"
     };
   } catch (error) {
-    console.error("Stripe refund error:", error.message);
+    console.error("Razorpay refund error:", error.message);
     throw Object.assign(
       new Error(`Refund failed: ${error.message}`),
       { statusCode: 502 }
