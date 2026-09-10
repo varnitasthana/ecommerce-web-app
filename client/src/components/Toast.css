@@ -16,7 +16,7 @@
   gap: 0.75rem;
   padding: 1rem 1.25rem;
   border-radius: var(--radius-md);
-  background: white;
+  background: var(--bg-primary);
   box-shadow: var(--shadow-xl);
   border: 1px solid var(--border);
   pointer-events: auto;
