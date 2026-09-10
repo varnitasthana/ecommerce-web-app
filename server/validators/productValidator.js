@@ -1,6 +1,6 @@
 const validateProductInput = ({ 
   name, description, longDescription, price, compareAtPrice, category, brand, sku, stock, 
-  images, active, lowStockThreshold, weight, warranty, returnPolicy, deliveryDays, attributes 
+  images, active, lowStockThreshold, weight, warranty, returnPolicy, deliveryDays, attributes, variants 
 }) => {
   if (!name || !description || !category) {
     return "Name, description, and category are required";
@@ -64,6 +64,18 @@ const validateProductInput = ({
 
   if (attributes !== undefined && (typeof attributes !== "object" || Array.isArray(attributes))) {
     return "Attributes must be an object";
+  }
+
+  if (variants !== undefined && !Array.isArray(variants)) {
+    return "Variants must be an array";
+  }
+
+  if (Array.isArray(variants)) {
+    for (const variant of variants) {
+      if (!variant.sku || typeof variant.sku !== "string") return "Each variant must have a SKU";
+      if (!Number.isFinite(Number(variant.price)) || Number(variant.price) < 0) return "Variant price must be a non-negative number";
+      if (!Number.isInteger(Number(variant.stock)) || Number(variant.stock) < 0) return "Variant stock must be a non-negative integer";
+    }
   }
 
   return null;
