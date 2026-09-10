@@ -30,9 +30,9 @@ This document summarizes the comprehensive upgrade of the ShopEase e-commerce ap
 **Key Features:**
 - Prevents duplicate order processing
 - Safe stock release on payment failure
-- Stripe webhook signature verification
+- Razorpay webhook signature verification
 - Configurable currency support
-- Graceful degradation when Stripe not configured
+- Graceful degradation when Razorpay not configured
 
 ### ✅ Phase 2: Product Catalog
 **Status**: DONE
@@ -129,7 +129,7 @@ Plus: cancelled, return_requested, return_approved, returned
 **Status**: DONE
 
 **Implemented:**
-- Refund service with Stripe integration
+- Refund service with Razorpay integration
 - Return request workflow
 - Refund status tracking (pending, approved, rejected, processed)
 - Safe stock release on return
@@ -269,7 +269,7 @@ Deployment readiness checklist created:
 - Secret management via environment variables
 - Health check endpoint operational
 
-Requires actual hosting setup (AWS/GCP/Heroku, MongoDB Atlas, Stripe real keys).
+Requires actual hosting setup (AWS/GCP/Heroku, MongoDB Atlas, Razorpay real keys).
 
 ## In-Progress Phases (4 IN PROGRESS)
 
@@ -284,7 +284,7 @@ Requires actual hosting setup (AWS/GCP/Heroku, MongoDB Atlas, Stripe real keys).
 - Security headers via Helmet.js
 - CORS with origin whitelist
 - MongoDB injection prevention
-- Stripe webhook signature verification
+- Razorpay webhook signature verification
 - Password hashing (bcryptjs)
 - JWT token security (24+ character requirement)
 
@@ -323,7 +323,7 @@ Requires actual hosting setup (AWS/GCP/Heroku, MongoDB Atlas, Stripe real keys).
 - Actual test implementations
 - MongoDB memory server setup
 - Test data factories
-- Stripe mock responses
+- Razorpay mock responses
 - E2E test suite with Cypress
 
 ### Phase 19: CI/CD
@@ -390,8 +390,8 @@ Requires actual hosting setup (AWS/GCP/Heroku, MongoDB Atlas, Stripe real keys).
 // Order indexes
 { user: 1, createdAt: -1 }
 { status: 1, createdAt: -1 }
-{ stripeCheckoutSessionId: 1 }
-{ stripePaymentIntentId: 1 }
+{ razorpayOrderId: 1 }
+{ razorpayPaymentId: 1 }
 
 // Address indexes
 { user: 1, isDefault: 1 }
@@ -443,7 +443,7 @@ Requires actual hosting setup (AWS/GCP/Heroku, MongoDB Atlas, Stripe real keys).
    - Rate limiting on auth endpoints (5/15min)
 
 2. **Payments**
-   - Stripe webhook signature verification
+   - Razorpay webhook signature verification
    - Idempotent webhook processing
    - Stock reserved in transaction
    - Server-side price validation
@@ -477,9 +477,9 @@ All changes are backward compatible:
 ```
 MONGO_URI=                      # MongoDB Atlas connection
 JWT_SECRET=                     # 24+ character secret
-STRIPE_SECRET_KEY=              # Stripe test/live key
-STRIPE_WEBHOOK_SECRET=          # Stripe webhook secret
-STRIPE_CURRENCY=                # Currency code (inr, usd, etc)
+RAZORPAY_KEY_ID=              # Razorpay test/live key
+RAZORPAY_KEY_SECRET=          # Razorpay key secret
+RAZORPAY_WEBHOOK_SECRET=      # Razorpay webhook secret
 CLIENT_URL=                     # Frontend URL
 CLOUDINARY_CLOUD_NAME=          # Cloudinary config
 CLOUDINARY_API_KEY=             # Cloudinary config
@@ -584,7 +584,7 @@ README.md (to be created with complete guide)
 - Connection pooling configured
 
 ### Services
-- Stripe account (test mode for staging)
+- Razorpay account (test mode for staging)
 - Email service (Resend or SendGrid)
 - Cloudinary (optional, for image uploads)
 - Shipping provider (optional)
