@@ -122,6 +122,20 @@ openssl rand -hex 32
 
 ---
 
+## Quick Start: Railway (Recommended)
+
+Railway is the fastest way to deploy ShopEase with zero server management.
+
+1. Push your code to GitHub.
+2. Create a new project at [railway.app](https://railway.app) and deploy from your repo.
+3. Add the **MongoDB** plugin or connect MongoDB Atlas.
+4. Set environment variables from `server/.env.example`.
+5. Railway builds from the included `Dockerfile` and serves both frontend and API.
+
+For the full Railway walkthrough, see [RAILWAY.md](./RAILWAY.md).
+
+---
+
 ## Deployment Options
 
 ### Option 1: Docker Deployment (Recommended)
@@ -497,6 +511,80 @@ ab -n 1000 -c 10 https://yourdomain.com/api/products
 # Test frontend load time
 lighthouse https://yourdomain.com --view
 ```
+
+---
+
+## Quick Public Deployment
+
+Use this section to make the current codebase publicly accessible.
+
+### Option A: Docker Compose (Fastest)
+
+**Prerequisites**: Docker Desktop or Docker Engine + Compose plugin.
+
+1. Copy `server/.env.example` to `server/.env` and fill real values:
+   - `MONGO_URI` — MongoDB Atlas or local MongoDB URI
+   - `JWT_SECRET` — 32+ random characters
+   - `RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET` — payment keys
+   - `CLIENT_URL` — your public domain
+
+2. Start the stack:
+   ```bash
+   docker-compose up -d
+   ```
+
+3. Verify:
+   ```bash
+   curl http://localhost/health
+   ```
+
+4. Point your domain to the server IP and optionally enable HTTPS with Certbot + nginx.
+
+### Option B: Linux VPS
+
+**Prerequisites**: Ubuntu 22.04+, root or sudo access, domain pointing to server.
+
+1. Prepare the server:
+   ```bash
+   sudo apt update && sudo apt upgrade -y
+   sudo apt install -y nodejs npm mongodb nginx
+   ```
+
+2. Clone and deploy:
+   ```bash
+   git clone <your-repo-url> /opt/shopease
+   cd /opt/shopease
+   cp server/.env.example server/.env
+   # Edit server/.env with real values
+   sudo bash scripts/deploy-linux.sh
+   ```
+
+3. Enable firewall:
+   ```bash
+   sudo ufw allow 80/tcp
+   sudo ufw allow 443/tcp
+   sudo ufw enable
+   ```
+
+4. Setup SSL:
+   ```bash
+   sudo certbot --nginx -d yourdomain.com -d www.yourdomain.com
+   ```
+
+### Option C: Cloud Platforms
+
+- **Railway / Render**: connect repo, set environment variables, and deploy.
+- **Vercel (frontend) + Railway (backend)**: deploy `client` to Vercel and `server` to Railway, then set `CLIENT_URL` and CORS accordingly.
+- **AWS / GCP / Azure**: use the Dockerfile or systemd service pattern above inside a VM or container service.
+
+### Post-Deployment Checklist
+
+- [ ] `https://yourdomain.com/health` returns 200
+- [ ] Homepage loads in Chrome, Safari, Firefox, Edge
+- [ ] `/admin` is accessible with admin credentials
+- [ ] `/orders`, `/cart`, `/checkout`, `/wishlist` work while logged in
+- [ ] SSL certificate is valid and auto-renewing
+- [ ] Backups are scheduled for MongoDB and uploads
 
 ---
 
