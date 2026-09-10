@@ -20,9 +20,24 @@ const orderSchema = new mongoose.Schema(
     user: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
-      required: true,
+      default: null,
       index: true
     },
+
+    guestEmail: {
+      type: String,
+      trim: true,
+      lowercase: true,
+      default: null,
+      index: true
+    },
+
+    guestPhone: {
+      type: String,
+      trim: true,
+      default: null
+    },
+
     idempotencyKey: {
       type: String,
       trim: true
@@ -37,7 +52,14 @@ const orderSchema = new mongoose.Schema(
       street: { type: String, required: true },
       city: { type: String, required: true },
       postalCode: { type: String, required: true },
-      country: { type: String, required: true }
+      country: { type: String, required: true },
+      phone: { type: String, default: null }
+    },
+
+    addressId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Address",
+      default: null
     },
     subtotal: { type: Number, required: true, min: 0, default: 0 },
     discountAmount: { type: Number, default: 0, min: 0 },
@@ -73,18 +95,20 @@ const orderSchema = new mongoose.Schema(
     
     paymentMethod: {
       type: String,
-      enum: ["stripe", "upi", "card", "wallet", "other"],
-      default: "stripe"
+      enum: ["razorpay", "upi", "card", "wallet", "cod", "other"],
+      default: "razorpay"
     },
     
-    stripeCheckoutSessionId: {
+    razorpayOrderId: {
       type: String,
-      sparse: true
+      sparse: true,
+      index: true
     },
     
-    stripePaymentIntentId: {
+    razorpayPaymentId: {
       type: String,
-      sparse: true
+      sparse: true,
+      index: true
     },
     
     paidAt: Date,
@@ -145,8 +169,56 @@ const orderSchema = new mongoose.Schema(
 orderSchema.index({ user: 1, createdAt: -1 });
 orderSchema.index(
   { user: 1, idempotencyKey: 1 },
-  { unique: true, partialFilterExpression: { idempotencyKey: { $type: "string" } } }
+  {
+    unique: true,
+    partialFilterExpression: {
+      idempotencyKey: { $exists: true }
+    }
+  }
 );
 orderSchema.index({ status: 1, createdAt: -1 });
 
-module.exports = mongoose.model("Order", orderSchema);
+const Order = mongoose.model("Order", orderSchema);
+
+const ensureIdempotencyIndex = async () => {
+  try {
+    const indexes = await Order.collection.indexes();
+    const targetName = "user_1_idempotencyKey_1";
+    const existing = indexes.find((index) => index.name === targetName);
+
+    if (!existing) {
+      await Order.collection.createIndex(
+        { user: 1, idempotencyKey: 1 },
+        {
+          unique: true,
+          partialFilterExpression: {
+            idempotencyKey: { $exists: true }
+          }
+        }
+      );
+      return;
+    }
+
+    const partialFilter = existing.partialFilterExpression || {};
+    const hasExists = partialFilter.idempotencyKey?.$exists === true;
+
+    if (!hasExists) {
+      await Order.collection.dropIndex(targetName);
+      await Order.collection.createIndex(
+        { user: 1, idempotencyKey: 1 },
+        {
+          unique: true,
+          partialFilterExpression: {
+            idempotencyKey: { $exists: true }
+          }
+        }
+      );
+    }
+  } catch (error) {
+    console.error("Order idempotency index check failed:", error.message);
+  }
+};
+
+Order.ensureIdempotencyIndex = ensureIdempotencyIndex;
+
+module.exports = Order;
