@@ -1,16 +1,26 @@
 process.env.NODE_ENV = "test";
 process.env.JWT_SECRET = "test-only-secret-that-is-long-enough-2026";
-process.env.STRIPE_SECRET_KEY = "sk_test_unit_only";
-process.env.STRIPE_WEBHOOK_SECRET = "whsec_unit_only";
+process.env.RAZORPAY_KEY_ID = "rzp_test_unit_only";
+process.env.RAZORPAY_KEY_SECRET = "razorpay_test_secret_unit_only";
+process.env.RAZORPAY_WEBHOOK_SECRET = "razorpay_webhook_secret_unit_only";
 
 const request = require("supertest");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
+const crypto = require("crypto");
 const { MongoMemoryServer } = require("mongodb-memory-server");
 const mongoose = require("mongoose");
-const mockStripe = { webhooks: { constructEvent: jest.fn() } };
 
-jest.mock("stripe", () => jest.fn(() => mockStripe));
+const mockRazorpay = {
+  orders: {
+    create: jest.fn()
+  },
+  refunds: {
+    create: jest.fn()
+  }
+};
+
+jest.mock("razorpay", () => jest.fn(() => mockRazorpay));
 
 jest.setTimeout(30000);
 
@@ -46,14 +56,17 @@ const sellerCredentials = {
 
 const login = async (email, password) => {
   const response = await request(app).post("/api/auth/login").send({ email, password });
-  return response.body.token;
+  return response.body?.accessToken || response.body?.token;
 };
 
 beforeAll(async () => {
   mongoServer = await MongoMemoryServer.create();
   process.env.MONGO_URI = mongoServer.getUri();
-  await mongoose.connect(process.env.MONGO_URI);
+  await mongoose.connect(process.env.MONGO_URI, { retryWrites: false });
   ({ app } = require("../server"));
+  process.env.RAZORPAY_KEY_ID = "rzp_test_unit_only";
+  process.env.RAZORPAY_KEY_SECRET = "razorpay_test_secret_unit_only";
+  process.env.RAZORPAY_WEBHOOK_SECRET = "razorpay_webhook_secret_unit_only";
   User = require("../models/User");
   Product = require("../models/Product");
   Order = require("../models/Order");
@@ -118,9 +131,10 @@ describe("authentication", () => {
     expect(response.status).toBe(200);
     expect(response.body.user.role).toBe("customer");
     expect(response.body.user).not.toHaveProperty("password");
-    expect(jwt.verify(response.body.token, process.env.JWT_SECRET).exp).toBeGreaterThan(Math.floor(Date.now() / 1000));
+    const accessToken = response.body.accessToken || response.body.token;
+    expect(jwt.verify(accessToken, process.env.JWT_SECRET).exp).toBeGreaterThan(Math.floor(Date.now() / 1000));
 
-    const me = await request(app).get("/api/auth/me").set("Authorization", `Bearer ${response.body.token}`);
+    const me = await request(app).get("/api/auth/me").set("Authorization", `Bearer ${accessToken}`);
     const missing = await request(app).get("/api/auth/me");
     expect(me.status).toBe(200);
     expect(me.body.user.email).toBe(customerCredentials.email);
@@ -302,7 +316,7 @@ describe("seller ownership", () => {
       category: "Fashion",
       brand: "OtherBrand",
       price: 60,
-      sku: "OTHER-OWNER-001",
+      sku: "OTHER-OWNED-001",
       slug: "other-owner-product",
       stock: 3,
       active: true,
@@ -425,10 +439,132 @@ describe("orders", () => {
   });
 });
 
-describe("Stripe webhook contract", () => {
-  test("confirms paid webhooks once and releases stock on failed payment", async () => {
+describe("Razorpay payment contract", () => {
+  beforeEach(async () => {
+    mockRazorpay.orders.create.mockClear();
+    mockRazorpay.refunds.create.mockClear();
+
+    const existing = await Product.findOne({ sku: "TEST-LAPTOP-001" });
+    if (existing) {
+      await Product.findByIdAndUpdate(existing._id, { active: true, deleted: false, stock: 8 });
+    }
+  });
+
+  test("creates a Razorpay order and reserves stock", async () => {
+    const customerToken = await login(customerCredentials.email, customerCredentials.password);
+    const product = await Product.findOne({ sku: "TEST-LAPTOP-001" });
+    const shippingAddress = { name: "Test Customer", street: "1 Test Road", city: "Test City", postalCode: "000001", country: "Testland" };
+
+    mockRazorpay.orders.create.mockResolvedValue({
+      id: "order_Test123",
+      amount: 550000,
+      currency: "INR",
+      receipt: "some-id",
+      status: "created"
+    });
+
+    const response = await request(app)
+      .post("/api/payments/create-order")
+      .set("Authorization", `Bearer ${customerToken}`)
+      .send({ items: [{ product: product._id, quantity: 1 }], shippingAddress });
+
+    expect(response.status).toBe(201);
+    expect(response.body).toHaveProperty("razorpayOrderId", "order_Test123");
+    expect(response.body).toHaveProperty("razorpayKeyId", process.env.RAZORPAY_KEY_ID);
+    expect(response.body).toHaveProperty("amount");
+    expect(response.body).toHaveProperty("orderId");
+
+    const order = await Order.findById(response.body.orderId);
+    expect(order.status).toBe("pending_payment");
+    expect(order.paymentStatus).toBe("pending");
+    expect(order.razorpayOrderId).toBe("order_Test123");
+    expect(order.stockReserved).toBe(true);
+  });
+
+  test("enforces idempotency on Razorpay order creation", async () => {
+    const customerToken = await login(customerCredentials.email, customerCredentials.password);
+    const product = await Product.findOne({ sku: "TEST-LAPTOP-001" });
+    const shippingAddress = { name: "Test Customer", street: "1 Test Road", city: "Test City", postalCode: "000001", country: "Testland" };
+
+    mockRazorpay.orders.create.mockResolvedValue({
+      id: "order_Idempotent123",
+      amount: 50000,
+      currency: "INR",
+      receipt: "some-id",
+      status: "created"
+    });
+
+    const first = await request(app)
+      .post("/api/payments/create-order")
+      .set("Authorization", `Bearer ${customerToken}`)
+      .set("Idempotency-Key", "razorpay-idempotency-key")
+      .send({ items: [{ product: product._id, quantity: 1 }], shippingAddress });
+
+    const second = await request(app)
+      .post("/api/payments/create-order")
+      .set("Authorization", `Bearer ${customerToken}`)
+      .set("Idempotency-Key", "razorpay-idempotency-key")
+      .send({ items: [{ product: product._id, quantity: 1 }], shippingAddress });
+
+    expect(first.status).toBe(201);
+    expect(second.status).toBe(200);
+    expect(second.body.idempotent).toBe(true);
+    expect(second.body.order._id).toBe(first.body.orderId);
+    expect(mockRazorpay.orders.create).toHaveBeenCalledTimes(1);
+  });
+
+  test("verifies payment signature and marks order paid", async () => {
     const customer = await User.findOne({ email: customerCredentials.email });
-    const product = await Product.findOne({ sku: "ORDER-TEST-001" });
+    const order = await Order.create({
+      user: customer._id,
+      items: [{ product: (await Product.findOne({ sku: "TEST-LAPTOP-001" }))._id, name: "Test Laptop", price: 500, quantity: 1 }],
+      shippingAddress: { name: "Test Customer", street: "1 Test Road", city: "Test City", postalCode: "000001", country: "Testland" },
+      subtotal: 500,
+      total: 500,
+      status: "pending_payment",
+      paymentStatus: "pending",
+      paymentMethod: "razorpay",
+      razorpayOrderId: "order_VerifyTest",
+      stockReserved: true
+    });
+    await Product.findByIdAndUpdate(order.items[0].product, { $inc: { stock: -1 } });
+
+    const razorpayPaymentId = "pay_VerifyTest123";
+    const signature = crypto
+      .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
+      .update(`order_VerifyTest|${razorpayPaymentId}`)
+      .digest("hex");
+
+    const customerToken = await login(customerCredentials.email, customerCredentials.password);
+    const response = await request(app)
+      .post("/api/payments/verify")
+      .set("Authorization", `Bearer ${customerToken}`)
+      .send({ razorpay_order_id: "order_VerifyTest", razorpay_payment_id: razorpayPaymentId, razorpay_signature: signature });
+
+    expect(response.status).toBe(200);
+    expect(response.body.message).toBe("Payment verified successfully");
+
+    const updated = await Order.findById(order._id);
+    expect(updated.paymentStatus).toBe("paid");
+    expect(updated.status).toBe("confirmed");
+    expect(updated.razorpayPaymentId).toBe(razorpayPaymentId);
+    expect(updated.stockReserved).toBe(false);
+  });
+
+  test("rejects invalid payment signature", async () => {
+    const customerToken = await login(customerCredentials.email, customerCredentials.password);
+    const response = await request(app)
+      .post("/api/payments/verify")
+      .set("Authorization", `Bearer ${customerToken}`)
+      .send({ razorpay_order_id: "order_Invalid", razorpay_payment_id: "pay_Invalid", razorpay_signature: "bad-signature" });
+
+    expect(response.status).toBe(400);
+    expect(response.body.message).toBe("Payment signature verification failed");
+  });
+
+  test("handles successful webhook payment event", async () => {
+    const customer = await User.findOne({ email: customerCredentials.email });
+    const product = await Product.findOne({ sku: "TEST-LAPTOP-001" });
     const order = await Order.create({
       user: customer._id,
       items: [{ product: product._id, name: product.name, price: product.price, quantity: 1 }],
@@ -437,24 +573,54 @@ describe("Stripe webhook contract", () => {
       total: product.price,
       status: "pending_payment",
       paymentStatus: "pending",
+      paymentMethod: "razorpay",
+      razorpayOrderId: "order_WebhookPaid",
       stockReserved: true
     });
     await Product.findByIdAndUpdate(product._id, { $inc: { stock: -1 } });
-    mockStripe.webhooks.constructEvent.mockReturnValue({
-      id: "evt_paid_1",
-      type: "checkout.session.completed",
-      data: { object: { metadata: { orderId: String(order._id) }, payment_status: "paid", payment_intent: "pi_test_1", id: "cs_test_1" } }
-    });
 
-    const paid = await request(app).post("/api/payments/webhook").set("stripe-signature", "test-signature").send(Buffer.from("{}"));
-    const confirmed = await Order.findById(order._id);
-    const duplicate = await request(app).post("/api/payments/webhook").set("stripe-signature", "test-signature").send(Buffer.from("{}"));
+    const payload = {
+      event: "payment.captured",
+      payload: {
+        payment: {
+          entity: {
+            id: "pay_WebhookPaid123",
+            order_id: "order_WebhookPaid",
+            status: "captured"
+          }
+        }
+      }
+    };
+    const bodyString = JSON.stringify(payload);
+    const webhookSignature = crypto
+      .createHmac("sha256", process.env.RAZORPAY_WEBHOOK_SECRET)
+      .update(bodyString)
+      .digest("hex");
+
+    const paid = await request(app)
+      .post("/api/payments/webhook")
+      .set("x-razorpay-signature", webhookSignature)
+      .set("Content-Type", "application/json")
+      .send(bodyString);
 
     expect(paid.status).toBe(200);
+    const confirmed = await Order.findById(order._id);
     expect(confirmed.paymentStatus).toBe("paid");
     expect(confirmed.status).toBe("confirmed");
-    expect(duplicate.body.idempotent).toBe(true);
 
+    const duplicate = await request(app)
+      .post("/api/payments/webhook")
+      .set("x-razorpay-signature", webhookSignature)
+      .set("Content-Type", "application/json")
+      .send(bodyString);
+
+    expect(duplicate.status).toBe(200);
+    expect(duplicate.body.idempotent).toBe(true);
+  });
+
+  test("handles failed webhook payment event and releases stock", async () => {
+    const customer = await User.findOne({ email: customerCredentials.email });
+    const product = await Product.findOne({ sku: "TEST-LAPTOP-001" });
     const failedOrder = await Order.create({
       user: customer._id,
       items: [{ product: product._id, name: product.name, price: product.price, quantity: 1 }],
@@ -463,23 +629,70 @@ describe("Stripe webhook contract", () => {
       total: product.price,
       status: "pending_payment",
       paymentStatus: "pending",
+      paymentMethod: "razorpay",
+      razorpayOrderId: "order_WebhookFailed",
       stockReserved: true
     });
     const stockBeforeFailure = (await Product.findById(product._id)).stock;
     await Product.findByIdAndUpdate(product._id, { $inc: { stock: -1 } });
-    mockStripe.webhooks.constructEvent.mockReturnValueOnce({
-      id: "evt_failed_1",
-      type: "checkout.session.expired",
-      data: { object: { metadata: { orderId: String(failedOrder._id) }, id: "cs_test_failed" } }
-    });
 
-    const failed = await request(app).post("/api/payments/webhook").set("stripe-signature", "test-signature").send(Buffer.from("{}"));
-    const failedState = await Order.findById(failedOrder._id);
-    const stockAfterFailure = (await Product.findById(product._id)).stock;
+    const payload = {
+      event: "payment.failed",
+      payload: {
+        payment: {
+          entity: {
+            id: "pay_WebhookFailed123",
+            order_id: "order_WebhookFailed",
+            status: "failed"
+          }
+        }
+      }
+    };
+    const bodyString = JSON.stringify(payload);
+    const webhookSignature = crypto
+      .createHmac("sha256", process.env.RAZORPAY_WEBHOOK_SECRET)
+      .update(bodyString)
+      .digest("hex");
+
+    const failed = await request(app)
+      .post("/api/payments/webhook")
+      .set("x-razorpay-signature", webhookSignature)
+      .set("Content-Type", "application/json")
+      .send(bodyString);
 
     expect(failed.status).toBe(200);
+    const failedState = await Order.findById(failedOrder._id);
     expect(failedState.paymentStatus).toBe("failed");
     expect(failedState.status).toBe("cancelled");
+    const stockAfterFailure = (await Product.findById(product._id)).stock;
     expect(stockAfterFailure).toBe(stockBeforeFailure);
+  });
+
+  test("processes demo checkout with COD and stock reservation", async () => {
+    const customerToken = await login(customerCredentials.email, customerCredentials.password);
+    const product = await Product.findOne({ sku: "TEST-LAPTOP-001" });
+    const shippingAddress = { name: "Test Customer", street: "1 Test Road", city: "Test City", postalCode: "000001", country: "Testland" };
+
+    const response = await request(app)
+      .post("/api/payments/demo-checkout")
+      .set("Authorization", `Bearer ${customerToken}`)
+      .send({ items: [{ product: product._id, quantity: 1 }], shippingAddress, paymentMethod: "cod" });
+
+    expect(response.status).toBe(201);
+    expect(response.body.demo).toBe(true);
+    expect(response.body.paymentMethod).toBe("cod");
+
+    const order = await Order.findById(response.body.orderId);
+    expect(order.status).toBe("confirmed");
+    expect(order.paymentStatus).toBe("paid");
+    expect(order.paymentMethod).toBe("cod");
+  });
+
+  test("rejects Razorpay order creation without authentication", async () => {
+    const response = await request(app)
+      .post("/api/payments/create-order")
+      .send({ items: [], shippingAddress: {} });
+
+    expect(response.status).toBe(401);
   });
 });
