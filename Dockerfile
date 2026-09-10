@@ -1,48 +1,44 @@
-FROM node:18-alpine AS base
+FROM node:20-alpine AS builder
 
-# Install dependencies only when needed
-FROM base AS deps
-RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
-# Install dependencies
-COPY package*.json ./
-RUN npm ci --only=production
+COPY server/package*.json ./server/
+COPY client/package*.json ./client/
 
-# Rebuild the source code only when needed
-FROM base AS builder
-WORKDIR /app
-COPY --from=deps /app/node_modules ./node_modules
+RUN cd server && npm ci --only=production
+RUN cd client && npm ci
+
 COPY . .
 
-# Build the client
-RUN npm run build --prefix client
+RUN cd client && npm run build
 
-# Production image, copy all the files and run the server
-FROM base AS runner
+FROM node:20-alpine
+
 WORKDIR /app
 
-ENV NODE_ENV production
+ENV NODE_ENV=production
+ENV PORT=5000
 
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nodejs
+COPY --from=builder /app/server/node_modules ./node_modules
+COPY --from=builder /app/server/*.js ./server/
+COPY --from=builder /app/server/controllers ./server/controllers
+COPY --from=builder /app/server/middleware ./server/middleware
+COPY --from=builder /app/server/models ./server/models
+COPY --from=builder /app/server/routes ./server/routes
+COPY --from=builder /app/server/config ./server/config
+COPY --from=builder /app/server/services ./server/services
+COPY --from=builder /app/server/utils ./server/utils
+COPY --from=builder /app/server/validators ./server/validators
+COPY --from=builder /app/server/scripts ./server/scripts
+COPY --from=builder /app/client/dist ./client/dist
+COPY --from=builder /app/server/.env.example ./server/.env.example
+COPY --from=builder /app/.env.example ./.env.example
 
-# Copy built client files
-COPY --from=builder --chown=nodejs:nodejs /client/dist ./client/dist
-# Copy server files
-COPY --chown=nodejs:nodejs server ./server
-COPY --chown=nodejs:nodejs package*.json ./
-COPY --from=builder --chown=nodejs:nodejs /app/node_modules ./node_modules
-
-# Create uploads directory
-RUN mkdir -p uploads && chown -R nodejs:nodejs uploads
-
-# Switch to non-root user
-USER nodejs
+RUN mkdir -p uploads logs
 
 EXPOSE 5000
 
-ENV PORT 5000
-ENV HOST 0.0.0.0
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD node -e "require('http').get('http://localhost:5000/health', (r) => { process.exit(r.statusCode === 200 ? 0 : 1) }).on('error', () => process.exit(1))"
 
 CMD ["node", "server/server.production.js"]
