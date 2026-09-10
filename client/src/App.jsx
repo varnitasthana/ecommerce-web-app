@@ -16,10 +16,20 @@ import Partner from './pages/Partner';
 import Legal from './pages/Legal';
 import Support from './pages/Support';
 import SellerDashboard from './pages/SellerDashboard';
+import Compare from './pages/Compare';
+import SellerAnalytics from './pages/SellerAnalytics';
+import Addresses from './pages/Addresses';
+import Returns from './pages/Returns';
+import Notifications from './pages/Notifications';
 import { AuthProvider } from './context/AuthContext';
 import { useAuth } from './context/useAuth';
 import ToastContainer from './components/Toast';
 import { addToast } from './components/toastApi';
+import api from './services/api';
+import ErrorBoundary from './components/ErrorBoundary';
+import SearchAutocomplete from './components/SearchAutocomplete';
+import MegaMenu from './components/MegaMenu';
+import MobileNav from './components/MobileNav';
 import './App.css';
 
 function ScrollToTop() {
@@ -74,6 +84,7 @@ function Header({ cart, darkMode, toggleDarkMode }) {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [suggestions, setSuggestions] = useState([]);
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
 
   const submitSearch = (event) => {
     event.preventDefault();
@@ -87,6 +98,34 @@ function Header({ cart, darkMode, toggleDarkMode }) {
     setShowProfileMenu(false);
     setMobileOpen(false);
   };
+
+  useEffect(() => {
+    if (!user) return;
+    api.get('/notifications')
+      .then(({ data }) => setUnreadNotifications(data.unreadCount || 0))
+      .catch(() => {});
+  }, [user]);
+
+  useEffect(() => {
+    const handleNotificationsUpdated = () => {
+      if (!user) return;
+      api.get('/notifications')
+        .then(({ data }) => setUnreadNotifications(data.unreadCount || 0))
+        .catch(() => {});
+    };
+    window.addEventListener('notifications-updated', handleNotificationsUpdated);
+    return () => window.removeEventListener('notifications-updated', handleNotificationsUpdated);
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
+    const interval = setInterval(() => {
+      api.get('/notifications')
+        .then(({ data }) => setUnreadNotifications(data.unreadCount || 0))
+        .catch(() => {});
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [user]);
 
   return (
     <>
@@ -105,40 +144,17 @@ function Header({ cart, darkMode, toggleDarkMode }) {
           </Link>
 
           {/* SEARCH BAR */}
-          <form className="global-search" onSubmit={submitSearch} style={{ flex: 1, maxWidth: 600, position: 'relative', display: 'flex', alignItems: 'center' }}>
-            <input
-              aria-label="Search products"
-              placeholder="Search for products, brands, and more..."
-              value={search}
-              onChange={(event) => {
-                setSearch(event.target.value);
-                if (event.target.value.trim().length >= 2) {
-                  const timer = setTimeout(() => {
-                    fetch(`/api/search/suggestions?q=${encodeURIComponent(event.target.value.trim())}`)
-                      .then((r) => r.json())
-                      .then((data) => setSuggestions(data.suggestions || []))
-                      .catch(() => setSuggestions([]));
-                  }, 300);
-                  return () => clearTimeout(timer);
-                } else {
-                  setSuggestions([]);
-                }
-              }}
-              style={{ width: '100%', padding: '0.7rem 2.5rem 0.7rem 1rem', borderRadius: 'var(--radius-full)', border: '1px solid var(--border)', background: 'var(--bg-secondary)', transition: 'all 0.3s ease', fontSize: '0.95rem' }}
-            />
-            <button type="submit" aria-label="Search" style={{ position: 'absolute', right: '0.4rem', background: 'var(--primary)', color: 'white', border: 'none', borderRadius: 'var(--radius-full)', padding: '0.55rem 1rem', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600, transition: 'all 0.2s ease' }}>🔍</button>
+          <div style={{ flex: 1, maxWidth: 640, display: 'flex', alignItems: 'center' }}>
+            <SearchAutocomplete value={search} onChange={setSearch} onSelect={submitSearch} />
+          </div>
 
-            {suggestions.length > 0 && (
-              <div className="search-suggestions" style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: '0.5rem', borderRadius: 'var(--radius-md)', overflow: 'hidden', zIndex: 50 }}>
-                {suggestions.map((s) => (
-                  <Link key={s._id} to={`/products/${s._id}`} className="search-suggestion-item" onClick={() => setSuggestions([])}>
-                    <img src={s.image || 'https://via.placeholder.com/48x48'} alt="" />
-                    <span><strong>{s.name}</strong><small>{s.brand} · ₹{s.price}</small></span>
-                  </Link>
-                ))}
-              </div>
-            )}
-          </form>
+          {/* NOTIFICATIONS */}
+          {user && (
+            <button className="theme-toggle" onClick={() => navigate('/notifications')} aria-label="Notifications" title="Notifications" style={{ position: 'relative' }}>
+              🔔
+              {unreadNotifications > 0 && <span style={{ position: 'absolute', top: '-2px', right: '-2px', background: 'var(--danger)', color: 'white', borderRadius: '50%', width: '18px', height: '18px', fontSize: '0.7rem', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700 }}>{unreadNotifications > 9 ? '9+' : unreadNotifications}</span>}
+            </button>
+          )}
 
           {/* THEME TOGGLE */}
           <button className="theme-toggle" onClick={toggleDarkMode} aria-label="Toggle dark mode" title={darkMode ? 'Light mode' : 'Dark mode'}>
@@ -191,6 +207,12 @@ function Header({ cart, darkMode, toggleDarkMode }) {
                         </NavLink>
                         <NavLink to="/wishlist" onClick={() => setShowProfileMenu(false)}>
                           ❤️ Wishlist
+                        </NavLink>
+                        <NavLink to="/account/addresses" onClick={() => setShowProfileMenu(false)}>
+                          📍 Addresses
+                        </NavLink>
+                        <NavLink to="/returns" onClick={() => setShowProfileMenu(false)}>
+                          ↩️ Returns
                         </NavLink>
                         <button onClick={handleLogout}>
                           🚪 Sign Out
@@ -333,6 +355,7 @@ function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
+      <ErrorBoundary>
       <div className="app-shell">
         <ScrollToTop />
         <Header cart={cart} darkMode={darkMode} toggleDarkMode={toggleDarkMode} />
@@ -352,22 +375,26 @@ function App() {
               path="/checkout"
               element={
                 <ProtectedRoute>
-                  <Checkout cart={cart} totalPrice={totalPrice} />
+                  <Checkout cart={cart} totalPrice={totalPrice} clearCart={clearCart} />
                 </ProtectedRoute>
               }
             />
             <Route path="/orders" element={<ProtectedRoute><Orders clearCart={clearCart} /></ProtectedRoute>} />
             <Route path="/orders/:id" element={<ProtectedRoute><OrderDetail /></ProtectedRoute>} />
             <Route path="/order-confirmation" element={<ProtectedRoute><OrderConfirmation /></ProtectedRoute>} />
-            <Route path="/wishlist" element={<ProtectedRoute><Wishlist addToCart={addToCart} /></ProtectedRoute>} />
-            <Route path="/partner" element={<Partner />} />
-            <Route path="/seller" element={<ProtectedRoute roles={['seller', 'admin']}><SellerDashboard /></ProtectedRoute>} />
-            <Route path="/support" element={<Support />} />
-            <Route path="/privacy" element={<Legal type="privacy" />} />
-            <Route path="/terms" element={<Legal type="terms" />} />
-            <Route path="/returns" element={<Legal type="returns" />} />
-            <Route path="/admin" element={<ProtectedRoute adminOnly><Admin /></ProtectedRoute>} />
-            <Route path="*" element={<Home addToCart={addToCart} />} />
+             <Route path="/wishlist" element={<ProtectedRoute><Wishlist addToCart={addToCart} /></ProtectedRoute>} />
+             <Route path="/account/addresses" element={<ProtectedRoute><Addresses /></ProtectedRoute>} />
+             <Route path="/returns" element={<ProtectedRoute><Returns /></ProtectedRoute>} />
+             <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
+             <Route path="/partner" element={<Partner />} />
+             <Route path="/seller" element={<ProtectedRoute roles={['seller', 'admin']}><SellerDashboard /></ProtectedRoute>} />
+             <Route path="/seller/analytics" element={<ProtectedRoute roles={['seller', 'admin']}><SellerAnalytics /></ProtectedRoute>} />
+             <Route path="/compare" element={<Compare />} />
+             <Route path="/support" element={<Support />} />
+             <Route path="/privacy" element={<Legal type="privacy" />} />
+             <Route path="/terms" element={<Legal type="terms" />} />
+             <Route path="/admin" element={<ProtectedRoute adminOnly><Admin /></ProtectedRoute>} />
+             <Route path="*" element={<Home addToCart={addToCart} />} />
           </Routes>
         </main>
 
@@ -378,7 +405,7 @@ function App() {
                 <span style={{ color: 'var(--primary)', fontSize: '1.3rem' }}>S</span>
                 <span style={{ fontWeight: 700, fontSize: '1.1rem' }}>ShopEase</span>
               </Link>
-              <p style={{ color: '#aaa', fontSize: '0.95rem' }}>Your trusted online marketplace for quality products and amazing deals. Shop with confidence!</p>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem' }}>Your trusted online marketplace for quality products and amazing deals. Shop with confidence!</p>
               <div className="social-icons">
                 <a href="#" className="social-icon">f</a>
                 <a href="#" className="social-icon">𝕏</a>
@@ -431,7 +458,7 @@ function App() {
           </div>
 
           <div className="footer-bottom" style={{ textAlign: 'center', paddingTop: '1.5rem' }}>
-            <div style={{ color: '#999', fontSize: '0.8rem' }}>
+            <div style={{ color: 'var(--text-tertiary)', fontSize: '0.8rem' }}>
               © 2026 ShopEase Marketplace. All rights reserved. | Made with ❤️ for better shopping
             </div>
           </div>
@@ -439,7 +466,9 @@ function App() {
 
         <ToastContainer />
         <BackToTop />
+        <MobileNav />
       </div>
+      </ErrorBoundary>
       </AuthProvider>
     </BrowserRouter>
   );
