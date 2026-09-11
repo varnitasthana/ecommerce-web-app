@@ -33,6 +33,7 @@ import ErrorBoundary from './components/ErrorBoundary';
 import SearchAutocomplete from './components/SearchAutocomplete';
 import MegaMenu from './components/MegaMenu';
 import MobileNav from './components/MobileNav';
+import './Premium.css';
 import './App.css';
 
 function ScrollToTop() {
@@ -170,7 +171,7 @@ function Header({ cart, darkMode, toggleDarkMode }) {
           </button>
 
           {/* DESKTOP NAVIGATION */}
-          <nav className="nav" style={{ display: window.innerWidth > 768 ? 'flex' : 'none' }}>
+          <nav className="nav">
             <NavLink to="/products">🛒 Shop</NavLink>
             <NavLink to="/wishlist">❤️ Wishlist</NavLink>
             <NavLink to="/orders">📦 Orders</NavLink>
@@ -385,7 +386,7 @@ function App() {
                 </ProtectedRoute>
               }
             />
-            <Route path="/orders" element={<ProtectedRoute><Orders clearCart={clearCart} /></ProtectedRoute>} />
+            <Route path="/orders" element={<ProtectedRoute><Orders clearCart={clearCart} addToCart={addToCart} /></ProtectedRoute>} />
             <Route path="/orders/:id" element={<ProtectedRoute><OrderDetail /></ProtectedRoute>} />
             <Route path="/order-confirmation" element={<ProtectedRoute><OrderConfirmation /></ProtectedRoute>} />
              <Route path="/wishlist" element={<ProtectedRoute><Wishlist addToCart={addToCart} /></ProtectedRoute>} />

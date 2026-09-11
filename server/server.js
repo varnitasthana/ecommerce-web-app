@@ -3,6 +3,12 @@ const cors = require("cors");
 const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
 const mongoose = require("mongoose");
+const compression = require("compression");
+const cookieParser = require("cookie-parser");
+const mongoSanitize = require("express-mongo-sanitize");
+const xss = require("xss-clean");
+const hpp = require("hpp");
+const { requestLogger } = require("./middleware/logger");
 const isTest = process.env.NODE_ENV === "test" || process.env.JEST_WORKER_ID !== undefined;
 if (!isTest) {
   require("dotenv").config();
@@ -72,6 +78,13 @@ if (!isTest) {
 }
 app.post("/api/payments/webhook", express.raw({ type: "application/json" }), handleRazorpayWebhook);
 app.use(express.json({ limit: "1mb" }));
+app.use(express.urlencoded({ extended: true, limit: "10mb" }));
+app.use(cookieParser());
+app.use(compression());
+app.use(mongoSanitize());
+app.use(xss());
+app.use(hpp());
+app.use(requestLogger);
 app.use((req, _res, next) => {
   req.id = req.headers["x-request-id"] || `req_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
   next();

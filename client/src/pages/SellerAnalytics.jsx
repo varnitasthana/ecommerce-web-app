@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import api from '../services/api';
 import Button from '../components/Button';
 import { formatDate, formatCurrency } from '../utils/formatters';

@@ -67,7 +67,7 @@ function Login() {
     setMessage('');
     setMessageType('');
     try {
-      await api.post('/api/auth/tokens/resend-verification', { email: form.email });
+      await api.post('/auth/tokens/resend-verification', { email: form.email });
       setMessage('Verification email sent! Please check your inbox.');
       setMessageType('success');
     } catch {
