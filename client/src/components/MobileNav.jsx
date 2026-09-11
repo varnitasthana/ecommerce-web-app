@@ -31,7 +31,7 @@ function MobileNav() {
   ];
 
   return (
-    <nav className="mobile-bottom-nav" style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: 'var(--bg-primary)', borderTop: '1px solid var(--border)', display: 'none', justifyContent: 'space-around', alignItems: 'center', padding: '0.5rem 0', zIndex: 900, boxShadow: '0 -4px 20px rgba(0,0,0,0.08)' }}>
+    <nav className="mobile-bottom-nav">
       {navItems.map((item) => {
         const isActive = location.pathname === item.path || (item.path !== '/' && location.pathname.startsWith(item.path));
         return (
@@ -39,7 +39,6 @@ function MobileNav() {
             key={item.path}
             to={item.path}
             className={`mobile-nav-item ${isActive ? 'mobile-nav-item-active' : ''}`}
-            style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem', padding: '0.4rem 0', textDecoration: 'none', color: isActive ? 'var(--primary)' : 'var(--text-tertiary)', fontSize: '0.7rem', fontWeight: 600, position: 'relative', transition: 'color 0.2s ease' }}
           >
             <div style={{ position: 'relative' }}>
               <item.icon style={{ fontSize: '1.25rem' }} />

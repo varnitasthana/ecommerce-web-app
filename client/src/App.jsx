@@ -140,98 +140,71 @@ function Header({ cart, darkMode, toggleDarkMode }) {
 
       {/* MAIN HEADER */}
       <header className="topbar glass-header">
-        <div style={{ maxWidth: 1400, margin: '0 auto', padding: '0.75rem max(1.5rem, calc((100vw - 1400px) / 2))', display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+        <div className="topbar-inner">
           {/* LOGO */}
-          <Link className="brand" to="/" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', textDecoration: 'none', color: 'inherit' }}>
-            <span className="brand-mark" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '2.2rem', height: '2.2rem', borderRadius: 'var(--radius-md)', background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)', color: 'white', fontWeight: 700, fontSize: '1.1rem', boxShadow: '0 4px 12px rgba(79, 70, 229, 0.3)' }}>S</span>
-            <span style={{ fontWeight: 700, fontSize: '1.2rem' }}>ShopEase</span>
+          <Link className="brand" to="/">
+            <span className="brand-mark">S</span>
+            <span className="brand-text">ShopEase</span>
           </Link>
 
           {/* SEARCH BAR */}
-          <div style={{ flex: 1, maxWidth: 640, display: 'flex', alignItems: 'center' }}>
+          <div className="global-search">
             <SearchAutocomplete value={search} onChange={setSearch} onSelect={submitSearch} />
           </div>
 
-          {/* NOTIFICATIONS */}
-          {user && (
-            <button className="theme-toggle" onClick={() => navigate('/notifications')} aria-label="Notifications" title="Notifications" style={{ position: 'relative' }}>
-              🔔
-              {unreadNotifications > 0 && <span style={{ position: 'absolute', top: '-2px', right: '-2px', background: 'var(--danger)', color: 'white', borderRadius: '50%', width: '18px', height: '18px', fontSize: '0.7rem', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700 }}>{unreadNotifications > 9 ? '9+' : unreadNotifications}</span>}
+          {/* DESKTOP ACTIONS */}
+          <div className="topbar-actions">
+            {user && (
+              <button className="theme-toggle" onClick={() => navigate('/notifications')} aria-label="Notifications" title="Notifications">
+                🔔
+                {unreadNotifications > 0 && <span className="topbar-badge">{unreadNotifications > 9 ? '9+' : unreadNotifications}</span>}
+              </button>
+            )}
+            <button className="theme-toggle" onClick={toggleDarkMode} aria-label="Toggle dark mode" title={darkMode ? 'Light mode' : 'Dark mode'}>
+              {darkMode ? '☀️' : '🌙'}
             </button>
-          )}
-
-          {/* THEME TOGGLE */}
-          <button className="theme-toggle" onClick={toggleDarkMode} aria-label="Toggle dark mode" title={darkMode ? 'Light mode' : 'Dark mode'}>
-            {darkMode ? '☀️' : '🌙'}
-          </button>
-
-          {/* MOBILE MENU BUTTON */}
-          <button className="mobile-menu-btn" onClick={() => setMobileOpen(!mobileOpen)} aria-label="Menu">
-            {mobileOpen ? '✕' : '☰'}
-          </button>
-
-          {/* DESKTOP NAVIGATION */}
-          <nav className="nav">
-            <NavLink to="/products">🛒 Shop</NavLink>
-            <NavLink to="/wishlist">❤️ Wishlist</NavLink>
-            <NavLink to="/orders">📦 Orders</NavLink>
-            <NavLink to="/cart">🛍️ Cart
-              {cart.length > 0 && <span className="nav-count">{cart.length}</span>}
-            </NavLink>
-
-            {user?.role === 'admin' && (
-              <NavLink to="/admin">⚙️ Admin</NavLink>
-            )}
-
-            {(user?.role === 'seller' || user?.role === 'admin') && (
-              <NavLink to="/seller">📊 Seller</NavLink>
-            )}
-
-            {/* USER PROFILE OR LOGIN */}
-            <div style={{ position: 'relative' }}>
-              {user ? (
-                <>
-                  <button
-                    className="nav-button"
-                    onClick={() => setShowProfileMenu(!showProfileMenu)}
-                  >
-                    👤 {user.name || 'Account'}
-                  </button>
-
-                  {/* PROFILE DROPDOWN */}
-                  {showProfileMenu && (
-                    <div className="profile-dropdown">
-                      <div className="profile-dropdown-header">
-                        <p>{user.name}</p>
-                        <small>{user.email}</small>
-                      </div>
-                      <div className="profile-dropdown-menu">
-                        <NavLink to="/orders" onClick={() => setShowProfileMenu(false)}>
-                          📦 My Orders
-                        </NavLink>
-                        <NavLink to="/wishlist" onClick={() => setShowProfileMenu(false)}>
-                          ❤️ Wishlist
-                        </NavLink>
-                        <NavLink to="/account/addresses" onClick={() => setShowProfileMenu(false)}>
-                          📍 Addresses
-                        </NavLink>
-                        <NavLink to="/returns" onClick={() => setShowProfileMenu(false)}>
-                          ↩️ Returns
-                        </NavLink>
-                        <button onClick={handleLogout}>
-                          🚪 Sign Out
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </>
-              ) : (
-                <NavLink to="/login">
-                  🔐 Sign In
-                </NavLink>
+            <button className="mobile-menu-btn" onClick={() => setMobileOpen(!mobileOpen)} aria-label="Menu">
+              {mobileOpen ? '✕' : '☰'}
+            </button>
+            <div className="desktop-nav">
+              <NavLink to="/products">🛒 Shop</NavLink>
+              <NavLink to="/wishlist">❤️ Wishlist</NavLink>
+              <NavLink to="/orders">📦 Orders</NavLink>
+              <NavLink to="/cart">🛍️ Cart{cart.length > 0 ? ` (${cart.length})` : ''}</NavLink>
+              {user?.role === 'admin' && (
+                <NavLink to="/admin">⚙️ Admin</NavLink>
               )}
+              {(user?.role === 'seller' || user?.role === 'admin') && (
+                <NavLink to="/seller">📊 Seller</NavLink>
+              )}
+              <div className="desktop-auth">
+                {user ? (
+                  <div className="profile-dropdown">
+                    <button className="nav-button" onClick={() => setShowProfileMenu(!showProfileMenu)}>
+                      👤 {user.name || 'Account'}
+                    </button>
+                    {showProfileMenu && (
+                      <div className="profile-dropdown">
+                        <div className="profile-dropdown-header">
+                          <p>{user.name}</p>
+                          <small>{user.email}</small>
+                        </div>
+                        <div className="profile-dropdown-menu">
+                          <NavLink to="/orders" onClick={() => setShowProfileMenu(false)}>📦 My Orders</NavLink>
+                          <NavLink to="/wishlist" onClick={() => setShowProfileMenu(false)}>❤️ Wishlist</NavLink>
+                          <NavLink to="/account/addresses" onClick={() => setShowProfileMenu(false)}>📍 Addresses</NavLink>
+                          <NavLink to="/returns" onClick={() => setShowProfileMenu(false)}>↩️ Returns</NavLink>
+                          <button onClick={handleLogout}>🚪 Sign Out</button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <NavLink to="/login" className="nav-button">🔐 Sign In</NavLink>
+                )}
+              </div>
             </div>
-          </nav>
+          </div>
         </div>
       </header>
 

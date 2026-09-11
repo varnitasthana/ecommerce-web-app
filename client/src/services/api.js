@@ -1,14 +1,16 @@
 import axios from 'axios';
 
+const baseURL = import.meta.env.VITE_API_URL || '/api';
+
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
+  baseURL
 });
 
 const refreshAccessToken = async () => {
   const refreshToken = localStorage.getItem('refreshToken');
   if (!refreshToken) return null;
 
-  const response = await axios.post(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/auth/refresh-token`, {
+  const response = await axios.post(`${baseURL}/auth/refresh-token`, {
     refreshToken
   });
 
