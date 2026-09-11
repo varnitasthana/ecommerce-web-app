@@ -60,9 +60,10 @@ function Cart({ cart, removeFromCart, updateQuantity, totalPrice }) {
 
   return (
     <section className="cart-page">
-      <Breadcrumb items={[{ label: 'Home', path: '/' }, { label: 'Cart' }]} />
-      {/* CART ITEMS */}
-      <div className="cart-items-column">
+      <div style={{ maxWidth: 1400, margin: '0 auto', padding: '2rem max(1.5rem, calc((100vw - 1400px) / 2))' }}>
+        <Breadcrumb items={[{ label: 'Home', path: '/' }, { label: 'Cart' }]} />
+        {/* CART ITEMS */}
+        <div className="cart-items-column">
         {cart.length > 0 && (
           <div className="card">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
@@ -273,9 +274,10 @@ function Cart({ cart, removeFromCart, updateQuantity, totalPrice }) {
               📦 Estimated delivery
             </div>
             <div>4-5 business days</div>
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </section>
   );
 }

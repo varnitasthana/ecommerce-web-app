@@ -161,7 +161,7 @@ function Register() {
           </div>
         )}
 
-        <p className="auth-footer-text">
+        <p className="auth-footer-text" style={{ textAlign: 'center', marginTop: '1.25rem' }}>
           Already have an account? <Link to="/login" className="auth-link">Sign in</Link>
         </p>
       </div>

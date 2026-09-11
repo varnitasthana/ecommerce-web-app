@@ -218,9 +218,9 @@ function Admin() {
     <section className="page-block">
       <h2>Admin Panel</h2>
       
-      <div className="admin-tabs" style={{ display: 'flex', gap: '0.5rem', marginBottom: '2rem', borderBottom: '1px solid var(--border)', paddingBottom: '0.5rem', flexWrap: 'wrap' }}>
+      <div className="admin-tabs">
         {tabs.map((t) => (
-          <button key={t.id} onClick={() => setTab(t.id)} style={{ background: tab === t.id ? 'var(--primary)' : 'transparent', color: tab === t.id ? 'white' : 'var(--text-secondary)', border: 'none', padding: '0.6rem 1.2rem', borderRadius: 'var(--radius-md)', cursor: 'pointer', fontWeight: 600, transition: 'all 0.2s ease' }}>{t.label}</button>
+          <button key={t.id} onClick={() => setTab(t.id)} className={tab === t.id ? 'active' : ''}>{t.label}</button>
         ))}
       </div>
 

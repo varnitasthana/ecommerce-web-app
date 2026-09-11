@@ -133,7 +133,7 @@ function Login() {
           </div>
 
           <div className="form-group" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.9rem' }}>
-            <label className="form-checkbox-label">
+            <label className="form-checkbox-label" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
               <input
                 type="checkbox"
                 name="remember"
@@ -156,7 +156,7 @@ function Login() {
           </div>
         )}
 
-        <p className="auth-footer-text">
+        <p className="auth-footer-text" style={{ textAlign: 'center', marginTop: '1.25rem' }}>
           New here? <Link to="/register" className="auth-link">Create account</Link>
         </p>
       </div>

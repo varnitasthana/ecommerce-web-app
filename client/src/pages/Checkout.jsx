@@ -283,15 +283,16 @@ function Checkout({ cart, totalPrice, clearCart }) {
           <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
             <Button to={`/orders/${orderSuccess.orderId}`} size="lg">View Order</Button>
             <Button to="/products" variant="secondary" size="lg">Continue Shopping</Button>
-          </div>
         </div>
-      </section>
-    );
-  }
+      </div>
+    </section>
+  );
+}
 
   return (
     <section className="checkout-page">
-      <Breadcrumb items={[{ label: 'Home', path: '/' }, { label: 'Cart', path: '/cart' }, { label: 'Checkout' }]} />
+      <div style={{ maxWidth: 1100, margin: '0 auto', padding: '2rem max(1.5rem, calc((100vw - 1400px) / 2))' }}>
+        <Breadcrumb items={[{ label: 'Home', path: '/' }, { label: 'Cart', path: '/cart' }, { label: 'Checkout' }]} />
       <div style={{ marginBottom: '2rem' }}>
         <h2>Checkout</h2>
         <p className="muted">Complete your order securely</p>
@@ -343,16 +344,16 @@ function Checkout({ cart, totalPrice, clearCart }) {
 
               {(!selectedAddressId || savedAddresses.length === 0) && (
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                <div className="form-group">
-                  <label htmlFor="name">Full Name</label>
-                  <input id="name" name="name" placeholder="Your full name" value={address.name} onChange={handleChange} required />
-                  {errors.name && <small className="form-error">{errors.name}</small>}
+                  <div className="form-group">
+                    <label htmlFor="name">Full Name</label>
+                    <input id="name" name="name" placeholder="Your full name" value={address.name} onChange={handleChange} required />
+                    {errors.name && <small className="form-error">{errors.name}</small>}
+                  </div>
+                  <div className="form-group">
+                    <label htmlFor="phone">Phone Number</label>
+                    <input id="phone" name="phone" placeholder="+91 98765 43210" value={address.phone || ''} onChange={handleChange} />
+                  </div>
                 </div>
-                <div className="form-group">
-                  <label htmlFor="phone">Phone Number</label>
-                  <input id="phone" name="phone" placeholder="+91 98765 43210" value={address.phone || ''} onChange={handleChange} />
-                </div>
-              </div>
               )}
               <div className="form-group">
                 <label htmlFor="street">Street Address</label>
@@ -502,6 +503,7 @@ function Checkout({ cart, totalPrice, clearCart }) {
           </div>
         </div>
       </form>
+      </div>
     </section>
   );
 }

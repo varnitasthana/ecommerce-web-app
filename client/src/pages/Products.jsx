@@ -138,8 +138,67 @@ function Products({ addToCart }) {
 
   return (
     <section className="products-page">
-      {/* FILTERS SIDEBAR */}
-      <div className={`products-filter-panel filters-sidebar ${filterOpen ? '' : 'hidden'}`} style={{ display: filterOpen ? 'flex' : 'none' }}>
+      {/* MOBILE FILTER OVERLAY */}
+      {filterOpen && (
+        <div className="mobile-nav-overlay" onClick={() => setFilterOpen(false)}>
+          <div className="mobile-nav-panel" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 360, width: '85%' }}>
+            <div className="mobile-nav-close">
+              <button onClick={() => setFilterOpen(false)} style={{ background: 'transparent', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: 'var(--text-secondary)' }}>✕</button>
+            </div>
+            <div className="mobile-nav-links" style={{ padding: '1rem' }}>
+              <div className="products-filter-header">
+                <h3 className="products-filter-title">Filters</h3>
+                {activeFiltersCount > 0 && (
+                  <button className="filter-toggle-button" onClick={clearFilters}>Clear all</button>
+                )}
+              </div>
+              <div className="filter-group">
+                <h4>Category</h4>
+                <select value={category} onChange={(e) => { setCategory(e.target.value); setPageFromUrl(1); }} className="form-select">
+                  <option value="all">All categories</option>
+                  {categories.map((item) => <option key={item} value={item}>{item}</option>)}
+                </select>
+              </div>
+              <div className="filter-group">
+                <h4>Brand</h4>
+                <select value={brand} onChange={(e) => { setBrand(e.target.value); setPageFromUrl(1); }} className="form-select">
+                  <option value="all">All brands</option>
+                  {brands.map((item) => <option key={item} value={item}>{item}</option>)}
+                </select>
+              </div>
+              <div className="filter-group">
+                <h4>Price Range</h4>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.6rem' }}>
+                  <input type="number" min="0" placeholder="Min price" value={minPrice} onChange={(e) => { setMinPrice(e.target.value); setPageFromUrl(1); }} className="form-input" />
+                  <input type="number" min="0" placeholder="Max price" value={maxPrice} onChange={(e) => { setMaxPrice(e.target.value); setPageFromUrl(1); }} className="form-input" />
+                </div>
+              </div>
+              <div className="filter-group">
+                <h4>Rating</h4>
+                <select value={minRating} onChange={(e) => { setMinRating(e.target.value); setPageFromUrl(1); }} className="form-select">
+                  <option value="">All ratings</option>
+                  <option value="4">⭐⭐⭐⭐+ (4 & up)</option>
+                  <option value="3">⭐⭐⭐+ (3 & up)</option>
+                  <option value="2">⭐⭐+ (2 & up)</option>
+                  <option value="1">⭐+ (1 & up)</option>
+                </select>
+              </div>
+              <div className="filter-group">
+                <h4>Availability</h4>
+                <select value={availability} onChange={(e) => { setAvailability(e.target.value); setPageFromUrl(1); }} className="form-select">
+                  <option value="all">All products</option>
+                  <option value="in-stock">In stock</option>
+                  <option value="out-of-stock">Out of stock</option>
+                </select>
+              </div>
+              <Button size="lg" style={{ width: '100%', marginTop: '1rem' }} onClick={() => setFilterOpen(false)}>Show results</Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MAIN CONTENT */}
+      <div>
         <div className="products-filter-header">
           <h3 className="products-filter-title">Filters</h3>
           {activeFiltersCount > 0 && (
