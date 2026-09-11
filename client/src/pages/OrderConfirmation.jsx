@@ -56,6 +56,21 @@ function OrderConfirmation() {
     loadOrder();
   }, [orderId, razorpayOrderId, razorpayPaymentId, searchParams]);
 
+  const subtotal = order.items?.reduce((sum, item) => sum + (item.price * item.quantity), 0) || 0;
+  const shipping = order.shippingCost || 0;
+  const tax = order.taxAmount || 0;
+  const total = order.total || subtotal + shipping + tax;
+
+  const estimatedDelivery = useMemo(() => {
+    const base = new Date(order.createdAt || Date.now());
+    const days = order.estimatedDeliveryDays || 4;
+    const delivery = new Date(base);
+    delivery.setDate(base.getDate() + days);
+    return delivery;
+  }, [order]);
+
+  const formattedDelivery = estimatedDelivery ? formatShortDate(estimatedDelivery) : 'N/A';
+
   if (loading || verifying) {
     return (
       <section className="page-block text-center" style={{ padding: '4rem 2rem' }}>
@@ -80,21 +95,6 @@ function OrderConfirmation() {
       </section>
     );
   }
-
-  const subtotal = order.items?.reduce((sum, item) => sum + (item.price * item.quantity), 0) || 0;
-  const shipping = order.shippingCost || 0;
-  const tax = order.taxAmount || 0;
-  const total = order.total || subtotal + shipping + tax;
-
-  const estimatedDelivery = useMemo(() => {
-    const base = new Date(order.createdAt || Date.now());
-    const days = order.estimatedDeliveryDays || 4;
-    const delivery = new Date(base);
-    delivery.setDate(base.getDate() + days);
-    return delivery;
-  }, [order]);
-
-  const formattedDelivery = estimatedDelivery ? formatShortDate(estimatedDelivery) : 'N/A';
 
   return (
     <section className="order-confirmation-page">
