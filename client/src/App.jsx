@@ -24,6 +24,8 @@ import SellerAnalytics from './pages/SellerAnalytics';
 import Addresses from './pages/Addresses';
 import Returns from './pages/Returns';
 import Notifications from './pages/Notifications';
+import Account from './pages/Account';
+import AccountSettings from './pages/AccountSettings';
 import { AuthProvider } from './context/AuthContext';
 import { useAuth } from './context/useAuth';
 import ToastContainer from './components/Toast';
@@ -139,73 +141,102 @@ function Header({ cart, darkMode, toggleDarkMode }) {
       </div>
 
       {/* MAIN HEADER */}
-      <header className="topbar glass-header">
-        <div className="topbar-inner">
-          {/* LOGO */}
-          <Link className="brand" to="/">
-            <span className="brand-mark">S</span>
-            <span className="brand-text">ShopEase</span>
-          </Link>
-
-          {/* SEARCH BAR */}
-          <div className="global-search">
-            <SearchAutocomplete value={search} onChange={setSearch} onSelect={submitSearch} />
+      <header className="site-header">
+        {/* TOP ANNOUNCEMENT BAR */}
+        <div className="announcement-bar">
+          <div className="announcement-inner">
+            <span>🎉 Free Shipping on orders over ₹999 | Use code: FREESHIPPING</span>
+            <button className="announcement-close" aria-label="Close announcement">✕</button>
           </div>
+        </div>
 
-          {/* DESKTOP ACTIONS */}
-          <div className="topbar-actions">
-            {user && (
-              <button className="theme-toggle" onClick={() => navigate('/notifications')} aria-label="Notifications" title="Notifications">
-                🔔
-                {unreadNotifications > 0 && <span className="topbar-badge">{unreadNotifications > 9 ? '9+' : unreadNotifications}</span>}
-              </button>
-            )}
-            <button className="theme-toggle" onClick={toggleDarkMode} aria-label="Toggle dark mode" title={darkMode ? 'Light mode' : 'Dark mode'}>
-              {darkMode ? '☀️' : '🌙'}
-            </button>
-            <button className="mobile-menu-btn" onClick={() => setMobileOpen(!mobileOpen)} aria-label="Menu">
-              {mobileOpen ? '✕' : '☰'}
-            </button>
-            <div className="desktop-nav">
-              <NavLink to="/products">🛒 Shop</NavLink>
-              <NavLink to="/wishlist">❤️ Wishlist</NavLink>
-              <NavLink to="/orders">📦 Orders</NavLink>
-              <NavLink to="/cart">🛍️ Cart{cart.length > 0 ? ` (${cart.length})` : ''}</NavLink>
-              {user?.role === 'admin' && (
-                <NavLink to="/admin">⚙️ Admin</NavLink>
-              )}
-              {(user?.role === 'seller' || user?.role === 'admin') && (
-                <NavLink to="/seller">📊 Seller</NavLink>
-              )}
-              <div className="desktop-auth">
-                {user ? (
-                  <div className="profile-dropdown">
-                    <button className="nav-button" onClick={() => setShowProfileMenu(!showProfileMenu)}>
-                      👤 {user.name || 'Account'}
-                    </button>
-                    {showProfileMenu && (
-                      <div className="profile-dropdown">
-                        <div className="profile-dropdown-header">
-                          <p>{user.name}</p>
-                          <small>{user.email}</small>
-                        </div>
-                        <div className="profile-dropdown-menu">
-                          <NavLink to="/orders" onClick={() => setShowProfileMenu(false)}>📦 My Orders</NavLink>
-                          <NavLink to="/wishlist" onClick={() => setShowProfileMenu(false)}>❤️ Wishlist</NavLink>
+        {/* PRIMARY HEADER */}
+        <div className="header-primary">
+          <div className="header-container">
+            {/* LOGO */}
+            <Link className="brand" to="/">
+              <span className="brand-mark">S</span>
+              <span className="brand-text">ShopEase</span>
+            </Link>
+
+            {/* SEARCH BAR */}
+            <div className="header-search">
+              <SearchAutocomplete value={search} onChange={setSearch} onSelect={submitSearch} />
+            </div>
+
+            {/* USER ACTIONS */}
+            <div className="header-actions">
+              {user ? (
+                <div className="header-account">
+                  <button className="header-account-btn" onClick={() => setShowProfileMenu(!showProfileMenu)}>
+                    <span className="header-account-icon">👤</span>
+                    <span className="header-account-text">Hello, {user.name?.split(' ')[0] || 'User'}</span>
+                    <span className="header-account-sub">Account & Lists</span>
+                  </button>
+                  {showProfileMenu && (
+                    <div className="account-dropdown">
+                      <div className="account-dropdown-header">
+                        <p>Hi, {user.name}</p>
+                        <small>{user.email}</small>
+                      </div>
+                        <div className="account-dropdown-menu">
+                          <NavLink to="/account" onClick={() => setShowProfileMenu(false)}>👤 Your Account</NavLink>
+                          <NavLink to="/account/orders" onClick={() => setShowProfileMenu(false)}>📦 Your Orders</NavLink>
+                          <NavLink to="/account/wishlist" onClick={() => setShowProfileMenu(false)}>❤️ Wishlist</NavLink>
                           <NavLink to="/account/addresses" onClick={() => setShowProfileMenu(false)}>📍 Addresses</NavLink>
-                          <NavLink to="/returns" onClick={() => setShowProfileMenu(false)}>↩️ Returns</NavLink>
+                          <NavLink to="/account/returns" onClick={() => setShowProfileMenu(false)}>↩️ Returns</NavLink>
                           <button onClick={handleLogout}>🚪 Sign Out</button>
                         </div>
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <NavLink to="/login" className="nav-button">🔐 Sign In</NavLink>
-                )}
-              </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <NavLink to="/login" className="header-account-btn">
+                  <span className="header-account-icon">👤</span>
+                  <span className="header-account-text">Hello, Sign in</span>
+                  <span className="header-account-sub">Account & Lists</span>
+                </NavLink>
+              )}
+
+              <NavLink to="/account/orders" className="header-action-item">
+                <span className="header-action-icon">📦</span>
+                <span className="header-action-text">Returns</span>
+                <span className="header-action-sub">& Orders</span>
+              </NavLink>
+
+              <NavLink to="/cart" className="header-cart">
+                <span className="header-cart-icon">🛒</span>
+                {cart.length > 0 && <span className="header-cart-count">{cart.length}</span>}
+                <span className="header-cart-text">Cart</span>
+              </NavLink>
             </div>
           </div>
         </div>
+
+        {/* NAVIGATION BAR */}
+        <nav className="nav-bar">
+          <div className="nav-container">
+            <button className="nav-menu-btn" onClick={() => setMobileOpen(!mobileOpen)} aria-label="Menu">
+              {mobileOpen ? '✕' : '☰'} All
+            </button>
+            <div className="nav-links">
+              <NavLink to="/products?sort=featured">Today's Deals</NavLink>
+              <NavLink to="/products?category=Electronics">Electronics</NavLink>
+              <NavLink to="/products?category=Fashion">Fashion</NavLink>
+              <NavLink to="/products?category=Home%20%26%20Kitchen">Home & Kitchen</NavLink>
+              <NavLink to="/products?category=Beauty">Beauty</NavLink>
+              <NavLink to="/products?category=Sports%20%26%20Fitness">Sports</NavLink>
+            </div>
+            <div className="nav-actions">
+              {user?.role === 'admin' && (
+                <NavLink to="/admin" className="nav-admin-link">⚙️ Admin</NavLink>
+              )}
+              {(user?.role === 'seller' || user?.role === 'admin') && (
+                <NavLink to="/seller" className="nav-seller-link">📊 Seller Dashboard</NavLink>
+              )}
+            </div>
+          </div>
+        </nav>
       </header>
 
       {/* CATEGORY BAR */}
@@ -363,6 +394,13 @@ function App() {
             <Route path="/orders/:id" element={<ProtectedRoute><OrderDetail /></ProtectedRoute>} />
             <Route path="/order-confirmation" element={<ProtectedRoute><OrderConfirmation /></ProtectedRoute>} />
              <Route path="/wishlist" element={<ProtectedRoute><Wishlist addToCart={addToCart} /></ProtectedRoute>} />
+             <Route path="/account" element={<ProtectedRoute><Account /></ProtectedRoute>}>
+               <Route path="orders" element={<AccountOrders />} />
+               <Route path="wishlist" element={<AccountWishlist />} />
+               <Route path="addresses" element={<Addresses />} />
+               <Route path="returns" element={<Returns />} />
+               <Route path="settings" element={<AccountSettings />} />
+             </Route>
              <Route path="/account/addresses" element={<ProtectedRoute><Addresses /></ProtectedRoute>} />
              <Route path="/returns" element={<ProtectedRoute><Returns /></ProtectedRoute>} />
              <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />

@@ -796,65 +796,672 @@ body.dark .glass {
   border-color: rgba(255, 255, 255, 0.1);
 }
 
-.glass-header {
-  background: rgba(255, 255, 255, 0.85);
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  border-bottom: 1px solid rgba(229, 231, 235, 0.5);
+/* ============================================================
+   SITE HEADER - Amazon/Flipkart Style
+   ============================================================ */
+
+.site-header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: var(--bg-primary);
+  border-bottom: 1px solid var(--border);
 }
 
-body.dark .glass-header {
-  background: rgba(15, 23, 42, 0.85);
-  border-bottom-color: rgba(51, 65, 85, 0.5);
+.announcement-bar {
+  background: linear-gradient(90deg, #4f46e5 0%, #7c3aed 50%, #4f46e5 100%);
+  color: white;
+  padding: 0.6rem 1rem;
+  text-align: center;
+  font-size: var(--text-sm);
+  font-weight: 500;
 }
 
-.topbar-inner {
+.announcement-inner {
   max-width: 1400px;
   margin: 0 auto;
-  padding: 0.75rem max(1.5rem, calc((100vw - 1400px) / 2));
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  flex-wrap: wrap;
-}
-
-.topbar-actions {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin-left: auto;
-}
-
-.desktop-nav {
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
-}
-
-.desktop-auth {
-  position: relative;
-}
-
-.brand-text {
-  font-weight: 700;
-  font-size: 1.2rem;
-}
-
-.topbar-badge {
-  position: absolute;
-  top: -2px;
-  right: -2px;
-  background: var(--danger);
-  color: white;
-  border-radius: 50%;
-  width: 18px;
-  height: 18px;
-  font-size: 0.7rem;
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 1rem;
+}
+
+.announcement-close {
+  background: transparent;
+  border: none;
+  color: white;
+  cursor: pointer;
+  font-size: var(--text-sm);
+  opacity: 0.8;
+  padding: 0.25rem;
+}
+
+.announcement-close:hover {
+  opacity: 1;
+}
+
+.header-primary {
+  background: var(--bg-primary);
+  border-bottom: 1px solid var(--border);
+}
+
+.header-container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 1rem max(1.5rem, calc((100vw - 1400px) / 2));
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 2rem;
+  align-items: center;
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  text-decoration: none;
+  color: inherit;
+}
+
+.brand-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: var(--radius-md);
+  background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+  color: white;
+  font-weight: 800;
+  font-size: 1.2rem;
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
+}
+
+.brand-text {
+  font-weight: 800;
+  font-size: 1.5rem;
+  background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  letter-spacing: -0.02em;
+}
+
+.header-search {
+  min-width: 0;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.header-account {
+  position: relative;
+}
+
+.header-account-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.15rem;
+  text-decoration: none;
+  color: inherit;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0.4rem 0.6rem;
+  border-radius: var(--radius-md);
+  transition: all 0.2s ease;
+}
+
+.header-account-btn:hover {
+  background: var(--bg-secondary);
+}
+
+.header-account-icon {
+  font-size: 1.4rem;
+  line-height: 1;
+}
+
+.header-account-text {
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+.header-account-sub {
+  font-size: var(--text-sm);
+  color: var(--text-primary);
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.header-action-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.15rem;
+  text-decoration: none;
+  color: inherit;
+  padding: 0.4rem 0.6rem;
+  border-radius: var(--radius-md);
+  transition: all 0.2s ease;
+}
+
+.header-action-item:hover {
+  background: var(--bg-secondary);
+}
+
+.header-action-icon {
+  font-size: 1.4rem;
+  line-height: 1;
+}
+
+.header-action-text {
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+.header-action-sub {
+  font-size: var(--text-sm);
+  color: var(--text-primary);
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.header-cart {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  text-decoration: none;
+  color: inherit;
+  padding: 0.4rem 0.6rem;
+  border-radius: var(--radius-md);
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.header-cart:hover {
+  background: var(--bg-secondary);
+}
+
+.header-cart-icon {
+  font-size: 1.8rem;
+  line-height: 1;
+}
+
+.header-cart-count {
+  position: absolute;
+  top: 0;
+  right: 0;
+  background: var(--danger);
+  color: white;
+  font-size: 0.7rem;
+  font-weight: 700;
+  min-width: 1.25rem;
+  height: 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  padding: 0 0.25rem;
+}
+
+.header-cart-text {
+  font-size: var(--text-sm);
+  color: var(--text-primary);
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+/* Account Dropdown */
+.account-dropdown {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  right: 0;
+  min-width: 260px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xl);
+  z-index: 200;
+  animation: slideDown 0.2s ease;
+  overflow: hidden;
+}
+
+.account-dropdown-header {
+  padding: 1rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-secondary);
+}
+
+.account-dropdown-header p {
+  margin: 0 0 0.25rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  font-size: var(--text-base);
+}
+
+.account-dropdown-header small {
+  color: var(--text-tertiary);
+  font-size: var(--text-sm);
+}
+
+.account-dropdown-menu {
+  padding: 0.5rem 0;
+}
+
+.account-dropdown-menu a,
+.account-dropdown-menu button {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.85rem 1rem;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: var(--text-base);
+  font-weight: 500;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: left;
+}
+
+.account-dropdown-menu a:hover,
+.account-dropdown-menu button:hover {
+  background: var(--bg-secondary);
+  color: var(--primary);
+}
+
+/* Navigation Bar */
+.nav-bar {
+  background: var(--bg-primary);
+  border-top: 1px solid var(--border-light);
+}
+
+.nav-container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 max(1.5rem, calc((100vw - 1400px) / 2));
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.nav-menu-btn {
+  display: none;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1rem;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.nav-menu-btn:hover {
+  background: var(--bg-secondary);
+}
+
+.nav-links {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  flex: 1;
+}
+
+.nav-links a {
+  padding: 0.6rem 0.9rem;
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  text-decoration: none;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.nav-links a:hover,
+.nav-links a.active {
+  color: var(--primary);
+  background: var(--primary-light);
+}
+
+.nav-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.nav-admin-link,
+.nav-seller-link {
+  padding: 0.5rem 0.9rem;
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  text-decoration: none;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.nav-admin-link {
+  color: var(--danger);
+  border: 1px solid var(--danger);
+}
+
+.nav-admin-link:hover {
+  background: var(--danger-light);
+}
+
+.nav-seller-link {
+  color: var(--success);
+  border: 1px solid var(--success);
+}
+
+.nav-seller-link:hover {
+  background: var(--success-light);
+}
+
+/* Dark mode header */
+body.dark .announcement-bar {
+  background: linear-gradient(90deg, #3730a3 0%, #5b21b6 50%, #3730a3 100%);
+}
+
+body.dark .brand-text {
+  background: linear-gradient(135deg, #818cf8 0%, #a78bfa 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+body.dark .nav-bar {
+  background: #0f172a;
+  border-top-color: #1e293b;
+}
+
+body.dark .nav-links a:hover,
+body.dark .nav-links a.active {
+  background: #1e293b;
+}
+
+/* Mobile Header */
+@media (max-width: 768px) {
+  .header-container {
+    grid-template-columns: auto 1fr auto;
+    gap: 1rem;
+    padding: 0.75rem 1rem;
+  }
+
+  .brand-text {
+    display: none;
+  }
+
+  .brand-mark {
+    width: 2rem;
+    height: 2rem;
+    font-size: 1rem;
+  }
+
+  .header-actions {
+    gap: 0.5rem;
+  }
+
+  .header-account-text,
+  .header-action-text,
+  .header-action-sub,
+  .header-cart-text {
+    display: none;
+  }
+
+  .header-account-btn {
+    padding: 0.4rem;
+  }
+
+  .header-action-item {
+    padding: 0.4rem;
+  }
+
+  .header-cart {
+    padding: 0.4rem;
+  }
+
+  .header-cart-icon {
+    font-size: 1.6rem;
+  }
+
+  .nav-menu-btn {
+    display: flex;
+  }
+
+  .nav-links {
+    display: none;
+  }
+
+  .nav-actions {
+    display: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .header-container {
+    grid-template-columns: auto 1fr auto;
+    gap: 0.75rem;
+    padding: 0.6rem 0.75rem;
+  }
+
+  .brand-mark {
+    width: 1.8rem;
+    height: 1.8rem;
+    font-size: 0.9rem;
+  }
+
+  .header-account-icon,
+  .header-action-icon {
+    font-size: 1.2rem;
+  }
+
+  .header-cart-icon {
+    font-size: 1.4rem;
+  }
+}
+
+/* ============================================================
+   ACCOUNT PAGE - Amazon/Flipkart Style
+   ============================================================ */
+.account-page {
+  padding: 2rem max(1.5rem, calc((100vw - 1400px) / 2));
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.account-container {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: 2rem;
+  align-items: start;
+}
+
+.account-sidebar {
+  position: sticky;
+  top: 90px;
+}
+
+.account-profile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 1rem;
+  padding: 2rem 1.5rem;
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  margin-bottom: 1rem;
+}
+
+.account-avatar {
+  width: 5rem;
+  height: 5rem;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  font-weight: 700;
+  box-shadow: 0 8px 24px rgba(79, 70, 229, 0.25);
+}
+
+.account-profile-info h3 {
+  margin: 0;
+  font-size: var(--text-lg);
+  color: var(--text-primary);
   font-weight: 700;
 }
+
+.account-profile-info p {
+  margin: 0.25rem 0 0.5rem;
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+.account-role-badge {
+  display: inline-block;
+  padding: 0.35rem 0.9rem;
+  border-radius: var(--radius-full);
+  background: var(--primary-light);
+  color: var(--primary);
+  font-size: var(--text-xs);
+  font-weight: 700;
+  text-transform: capitalize;
+}
+
+.account-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 0.75rem;
+}
+
+.account-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.85rem 1rem;
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  font-size: var(--text-base);
+  font-weight: 500;
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+.account-nav-item:hover {
+  background: var(--bg-secondary);
+  color: var(--primary);
+}
+
+.account-nav-item.active {
+  background: var(--primary-light);
+  color: var(--primary);
+  font-weight: 600;
+}
+
+.account-nav-icon {
+  font-size: 1.2rem;
+  width: 1.5rem;
+  text-align: center;
+}
+
+.account-content {
+  min-height: 60vh;
+}
+
+.account-content h2 {
+  margin: 0 0 1.25rem;
+  font-size: var(--text-2xl);
+  color: var(--text-primary);
+  font-weight: 700;
+}
+
+.account-settings {
+  max-width: 720px;
+}
+
+body.dark .account-role-badge {
+  background: #1e293b;
+  color: #818cf8;
+}
+
+body.dark .account-nav-item.active {
+  background: #1e293b;
+}
+
+/* Account responsive */
+@media (max-width: 768px) {
+  .account-container {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+
+  .account-sidebar {
+    position: static;
+  }
+
+  .account-nav {
+    flex-direction: row;
+    overflow-x: auto;
+    gap: 0.5rem;
+    padding: 0.5rem;
+  }
+
+  .account-nav-item {
+    white-space: nowrap;
+    padding: 0.6rem 0.9rem;
+  }
+
+  .account-profile {
+    flex-direction: row;
+    text-align: left;
+    align-items: center;
+    gap: 1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .account-page {
+    padding: 1rem 0.75rem;
+  }
+
+  .account-profile {
+    padding: 1.25rem;
+  }
+
+  .account-avatar {
+    width: 3.5rem;
+    height: 3.5rem;
+    font-size: 1.5rem;
+  }
+}
+
+/* ============================================================
+   TRANSITIONS & ANIMATIONS
+   ============================================================ */
 
 /* ============================================================
    SKELETON IMPROVEMENTS
