@@ -38,6 +38,7 @@ function Checkout({ cart, totalPrice, clearCart }) {
   const [errors, setErrors] = useState({});
   const [paymentMethod, setPaymentMethod] = useState('razorpay');
   const [demoMode, setDemoMode] = useState(false);
+  const [razorpayConfigured, setRazorpayConfigured] = useState(false);
   const [orderSuccess, setOrderSuccess] = useState(null);
   const [razorpayLoaded, setRazorpayLoaded] = useState(false);
   const [loadingAddresses, setLoadingAddresses] = useState(true);
@@ -46,14 +47,6 @@ function Checkout({ cart, totalPrice, clearCart }) {
 
   useEffect(() => {
     setPaymentCancelled(new URLSearchParams(window.location.search).get('payment') === 'cancelled');
-  }, []);
-
-  const checkoutRequestId = useMemo(() => {
-    const stored = sessionStorage.getItem('checkoutRequestId');
-    if (stored) return stored;
-    const generated = `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
-    sessionStorage.setItem('checkoutRequestId', generated);
-    return generated;
   }, []);
 
   useEffect(() => {
@@ -66,6 +59,24 @@ function Checkout({ cart, totalPrice, clearCart }) {
       }
     };
     checkRazorpay();
+  }, []);
+
+  useEffect(() => {
+    const fetchRazorpayStatus = async () => {
+      try {
+        const { data } = await api.get('/payments/status');
+        setRazorpayConfigured(Boolean(data?.configured));
+        if (!data?.configured && paymentMethod === 'razorpay') {
+          setPaymentMethod('cod');
+        }
+      } catch {
+        setRazorpayConfigured(false);
+        if (paymentMethod === 'razorpay') {
+          setPaymentMethod('cod');
+        }
+      }
+    };
+    fetchRazorpayStatus();
   }, []);
 
   useEffect(() => {
@@ -383,29 +394,37 @@ function Checkout({ cart, totalPrice, clearCart }) {
             <div className="card">
               <h3 className="checkout-card-title">Payment Method</h3>
               <div style={{ display: 'grid', gap: '1rem' }}>
-                {PAYMENT_METHODS.map((method) => (
-                  <label
-                    key={method.id}
-                    className={`checkout-payment-option ${paymentMethod === method.id ? 'checkout-payment-option-selected' : ''}`}
-                  >
-                    <input
-                      type="radio"
-                      name="paymentMethod"
-                      value={method.id}
-                      checked={paymentMethod === method.id}
-                      onChange={(e) => {
-                        setPaymentMethod(e.target.value);
-                        setMessage('');
-                      }}
-                      style={{ width: '20px', height: '20px', accentColor: 'var(--primary)' }}
-                    />
-                    <span className="checkout-payment-icon">{method.icon}</span>
-                    <div className="checkout-payment-info">
-                      <p className="checkout-payment-label">{method.label}</p>
-                      <p className="checkout-payment-desc">{method.description}</p>
-                    </div>
-                  </label>
-                ))}
+                {PAYMENT_METHODS.map((method) => {
+                  const isRazorpayDisabled = method.id === 'razorpay' && !razorpayConfigured;
+                  return (
+                    <label
+                      key={method.id}
+                      className={`checkout-payment-option ${paymentMethod === method.id ? 'checkout-payment-option-selected' : ''} ${isRazorpayDisabled ? 'checkout-payment-option-disabled' : ''}`}
+                      style={{ opacity: isRazorpayDisabled ? 0.6 : 1, cursor: isRazorpayDisabled ? 'not-allowed' : 'pointer' }}
+                    >
+                      <input
+                        type="radio"
+                        name="paymentMethod"
+                        value={method.id}
+                        checked={paymentMethod === method.id}
+                        onChange={(e) => {
+                          if (!isRazorpayDisabled) {
+                            setPaymentMethod(e.target.value);
+                            setMessage('');
+                          }
+                        }}
+                        disabled={isRazorpayDisabled}
+                        style={{ width: '20px', height: '20px', accentColor: 'var(--primary)' }}
+                      />
+                      <span className="checkout-payment-icon">{method.icon}</span>
+                      <div className="checkout-payment-info">
+                        <p className="checkout-payment-label">{method.label}</p>
+                        <p className="checkout-payment-desc">{method.description}</p>
+                        {isRazorpayDisabled && <p className="muted" style={{ fontSize: '0.8rem', marginTop: '0.25rem' }}>Payments not configured</p>}
+                      </div>
+                    </label>
+                  );
+                })}
               </div>
 
               {paymentMethod === 'cod' && (

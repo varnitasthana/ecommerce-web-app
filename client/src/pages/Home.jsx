@@ -164,12 +164,8 @@ function Home({ addToCart }) {
             Discover millions of products with exceptional deals and fast delivery. Experience premium shopping with 100% authenticity guarantee, easy returns, and secure payment options.
           </p>
           <div className="hero-actions">
-            <Link className="primary-btn" to="/products">
-              🛍️ Start Shopping
-            </Link>
-            <Link className="secondary-btn" to="/partner">
-              📦 Become a Seller
-            </Link>
+            <Link className="primary-btn" to="/products">🛍️ Start Shopping</Link>
+            <Link className="secondary-btn" to="/partner">📦 Become a Seller</Link>
           </div>
         </div>
         <div className="hero-stat">
