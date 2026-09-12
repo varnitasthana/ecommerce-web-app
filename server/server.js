@@ -1,4 +1,4 @@
-const express = require("express");
+﻿const express = require("express");
 const cors = require("cors");
 const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
@@ -209,9 +209,6 @@ app.get("/api/health", async (req, res) => {
   }
 });
 
-app.use(notFound);
-app.use(errorHandler);
-
 // One-time production seed endpoint
 app.post("/api/admin/seed", async (req, res) => {
   try {
@@ -288,6 +285,8 @@ app.post("/api/admin/seed", async (req, res) => {
   }
 });
 
+app.use(notFound);
+app.use(errorHandler);
 
 const PORT = process.env.PORT || 5000;
 let server;
