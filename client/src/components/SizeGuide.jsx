@@ -42,7 +42,7 @@ function SizeGuide({ product, onClose }) {
               <thead>
                 <tr style={{ background: 'var(--bg-secondary)' }}>
                   <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)', fontWeight: 700 }}>Size</th>
-                  {Object.entries(chart.measurements).map(([key, values]) => (
+                  {Object.entries(chart.measurements).map(([key]) => (
                     <th key={key} style={{ padding: '0.75rem', textAlign: 'center', borderBottom: '1px solid var(--border)', fontWeight: 700, textTransform: 'capitalize' }}>{key}</th>
                   ))}
                 </tr>

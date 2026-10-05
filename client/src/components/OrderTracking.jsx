@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
-import { Link } from 'react-router-dom';
 import api from '../services/api';
+import Button from './Button';
 
 function OrderTracking({ orderId, initialOrder }) {
   const [order, setOrder] = useState(initialOrder || null);

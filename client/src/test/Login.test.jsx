@@ -17,8 +17,8 @@ describe('Login form', () => {
   it('keeps typed credentials visible to the input model', () => {
     render(<MemoryRouter><Login /></MemoryRouter>);
 
-    const email = screen.getByPlaceholderText('Email');
-    const password = screen.getByPlaceholderText('Password');
+    const email = screen.getByLabelText('Email address');
+    const password = screen.getByLabelText('Password');
 
     fireEvent.change(email, { target: { value: 'customer@example.com' } });
     fireEvent.change(password, { target: { value: 'DemoPassword#123' } });

@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import api from '../services/api';
+import Button from './Button';
 
 function QASection({ productId }) {
   const [questions, setQuestions] = useState([]);
@@ -10,7 +11,7 @@ function QASection({ productId }) {
   const [submitting, setSubmitting] = useState(false);
   const [page, setPage] = useState(1);
 
-  const loadQuestions = async (pageNum = 1) => {
+  const loadQuestions = useCallback(async (pageNum = 1) => {
     setLoading(true);
     try {
       const { data } = await api.get(`/products/${productId}/questions?page=${pageNum}&limit=20`);
@@ -20,11 +21,11 @@ function QASection({ productId }) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [productId]);
 
   useEffect(() => {
     loadQuestions(page);
-  }, [productId, page]);
+  }, [loadQuestions, page]);
 
   const handleAsk = async (e) => {
     e.preventDefault();
@@ -35,7 +36,7 @@ function QASection({ productId }) {
       setQuestionText('');
       loadQuestions(1);
       setPage(1);
-    } catch (err) {
+    } catch {
       // handled by toast
     } finally {
       setSubmitting(false);
@@ -49,7 +50,7 @@ function QASection({ productId }) {
       setAnswerText('');
       setReplyingTo(null);
       loadQuestions(page);
-    } catch (err) {
+    } catch {
       // handled by toast
     }
   };
@@ -58,7 +59,7 @@ function QASection({ productId }) {
     try {
       await api.post(`/questions/${questionId}/helpful`);
       loadQuestions(page);
-    } catch (err) {
+    } catch {
       // handled by toast
     }
   };

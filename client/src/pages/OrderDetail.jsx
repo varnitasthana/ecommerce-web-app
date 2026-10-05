@@ -5,7 +5,7 @@ import Button from '../components/Button';
 import Breadcrumb from '../components/Breadcrumb';
 import ShareButton from '../components/ShareButton';
 import OrderTracking from '../components/OrderTracking';
-import { formatDate, formatShortDate, formatCurrency } from '../utils/formatters';
+import { formatDate, formatShortDate } from '../utils/formatters';
 
 const ORDER_STEPS = [
   { key: 'pending_payment', label: 'Placed', icon: '📝' },
